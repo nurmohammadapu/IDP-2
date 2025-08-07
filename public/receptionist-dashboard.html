@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receptionist Dashboard - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Reception Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="receptionist-dashboard.html" class="active">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="tests.html">🧪 Tests</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Reception Dashboard</h1>
+                <div class="header-actions">
+                    <button id="addPatientBtn" class="btn btn-primary">Add Patient</button>
+                    <button id="bookAppointmentBtn" class="btn btn-success">Book Appointment</button>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalPatients">0</h3>
+                            <p>Total Patients</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <h3 id="todayAppointments">0</h3>
+                            <p>Today's Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <h3 id="todayRevenue">৳0</h3>
+                            <p>Today's Revenue</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">⏰</div>
+                        <div class="stat-info">
+                            <h3 id="pendingAppointments">0</h3>
+                            <p>Pending Appointments</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section">
+                        <h2>Today's Appointments</h2>
+                        <div class="table-container">
+                            <table id="todayAppointmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Doctor</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading appointments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Recent Patients</h2>
+                        <div class="table-container">
+                            <table id="recentPatientsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Age</th>
+                                        <th>Contact</th>
+                                        <th>Last Visit</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="loading">Loading patients...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Pending Bills</h2>
+                        <div class="table-container">
+                            <table id="pendingBillsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Bill ID</th>
+                                        <th>Patient</th>
+                                        <th>Amount</th>
+                                        <th>Due</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading bills...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Load receptionist dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/reports/overview');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update stats
+                    document.getElementById('totalPatients').textContent = data.totalPatients || 0;
+                    document.getElementById('todayAppointments').textContent = data.todayAppointments || 0;
+                    document.getElementById('todayRevenue').textContent = `৳${(data.todayRevenue || 0).toFixed(2)}`;
+                    document.getElementById('pendingAppointments').textContent = data.pendingAppointments || 0;
+                    
+                    // Load today's appointments
+                    displayTodayAppointments(data.todayAppointmentsList || []);
+                    
+                    // Load recent patients
+                    displayRecentPatients(data.recentPatients || []);
+                    
+                    // Load pending bills
+                    displayPendingBills(data.pendingBills || []);
+                } else {
+                    showToast('Failed to load dashboard data', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading dashboard', 'error');
+            }
+        }
+
+        // Display today's appointments
+        function displayTodayAppointments(appointments) {
+            const tbody = document.querySelector('#todayAppointmentsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No appointments for today</td></tr>';
+                return;
+            }
+            
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.patient_name}</td>
+                    <td>Dr. ${appointment.doctor_name}</td>
+                    <td>${appointment.patient_contact}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editAppointment(${appointment.id})">Edit</button>
+                        ${appointment.status === 'completed' ? 
+                            `<button class="btn btn-sm btn-success" onclick="createBill(${appointment.patient_id})">Bill</button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Display recent patients
+        function displayRecentPatients(patients) {
+            const tbody = document.querySelector('#recentPatientsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (patients.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No recent patients</td></tr>';
+                return;
+            }
+            
+            patients.forEach(patient => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${patient.name}</td>
+                    <td>${patient.age}</td>
+                    <td>${patient.contact}</td>
+                    <td>${patient.last_visit ? formatDate(patient.last_visit) : 'First visit'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editPatient(${patient.id})">Edit</button>
+                        <button class="btn btn-sm btn-success" onclick="bookAppointmentForPatient(${patient.id})">Book</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Display pending bills
+        function displayPendingBills(bills) {
+            const tbody = document.querySelector('#pendingBillsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (bills.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No pending bills</td></tr>';
+                return;
+            }
+            
+            bills.forEach(bill => {
+                const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>BILL-${String(bill.id).padStart(6, '0')}</td>
+                    <td>${bill.patient_name}</td>
+                    <td>৳${parseFloat(bill.total_amount).toFixed(2)}</td>
+                    <td>৳${dueAmount.toFixed(2)}</td>
+                    <td>${formatDate(bill.billing_date)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewBill(${bill.id})">View</button>
+                        <button class="btn btn-sm btn-success" onclick="collectPayment(${bill.id})">Collect</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Navigation functions
+        function editAppointment(appointmentId) {
+            window.location.href = `appointments.html?edit=${appointmentId}`;
+        }
+
+        function createBill(patientId) {
+            window.location.href = `billing.html?patient=${patientId}`;
+        }
+
+        function editPatient(patientId) {
+            window.location.href = `patients.html?edit=${patientId}`;
+        }
+
+        function bookAppointmentForPatient(patientId) {
+            window.location.href = `appointments.html?patient=${patientId}`;
+        }
+
+        function viewBill(billId) {
+            window.location.href = `billing.html?view=${billId}`;
+        }
+
+        function collectPayment(billId) {
+            window.location.href = `billing.html?payment=${billId}`;
+        }
+
+        // Quick actions
+        function addPatient() {
+            window.location.href = 'patients.html';
+        }
+
+        function bookAppointment() {
+            window.location.href = 'appointments.html';
+        }
+
+        // Check authentication and load user
+        async function checkAuthAndLoadUser() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    // Check if user is receptionist
+                    if (currentUser.role !== 'receptionist') {
+                        showToast('Access denied. Receptionist access only.', 'error');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (error) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadDashboardData();
+            
+            // Quick action buttons
+            document.getElementById('addPatientBtn').addEventListener('click', addPatient);
+            document.getElementById('bookAppointmentBtn').addEventListener('click', bookAppointment);
+        });
+    </script>
+</body>
+</html>

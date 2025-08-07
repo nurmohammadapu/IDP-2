@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Features - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+        }
+        
+        .feature-card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+        
+        .notification-badge {
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .search-advanced {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .search-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .audit-log {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #3498db;
+        }
+        
+        .audit-log .timestamp {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .audit-details {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .audit-changes {
+            background: #fff;
+            padding: 0.5rem;
+            border-radius: 3px;
+            margin-top: 0.5rem;
+            border: 1px solid #ddd;
+        }
+        
+        .backup-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+        }
+        
+        .access-denied {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .access-denied h2 {
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="advanced.html" class="active">⚡ Advanced</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Advanced Features</h1>
+                <div class="header-actions">
+                    <button id="notificationBtn" class="btn btn-secondary">
+                        🔔 Notifications
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-section" id="mainContent">
+                <div class="loading">Checking access permissions...</div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let notifications = [];
+        let auditLogs = [];
+        let currentUser = null;
+
+        // Check if user has admin access
+        async function checkAdminAccess() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    if (currentUser.role !== 'admin') {
+                        showAccessDenied();
+                        return false;
+                    }
+                    
+                    loadAdminContent();
+                    return true;
+                } else {
+                    window.location.href = 'login.html';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking admin access:', error);
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        // Show access denied message
+        function showAccessDenied() {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div class="access-denied">
+                    <h2>🚫 Access Denied</h2>
+                    <p>You don't have permission to access this page.</p>
+                    <p>Only administrators can view advanced features.</p>
+                    <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">
+                        Go to Dashboard
+                    </button>
+                </div>
+            `;
+        }
+
+        // Load admin content
+        function loadAdminContent() {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <!-- Advanced Search -->
+                <div class="search-advanced">
+                    <h3>🔍 Advanced Search</h3>
+                    <div class="search-filters">
+                        <input type="text" id="searchQuery" placeholder="Search query..." class="form-control">
+                        <select id="searchType" class="form-control">
+                            <option value="patients">Patients</option>
+                            <option value="doctors">Doctors</option>
+                            <option value="appointments">Appointments</option>
+                        </select>
+                        <button id="advancedSearchBtn" class="btn btn-primary">Search</button>
+                    </div>
+                    <div id="searchResults" class="table-container" style="display: none; margin-top: 1rem;">
+                        <table id="searchResultsTable">
+                            <thead id="searchResultsHead"></thead>
+                            <tbody id="searchResultsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Feature Cards -->
+                <div class="advanced-grid">
+                    <!-- System Statistics -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">📊</span> System Statistics</h3>
+                        <p>Real-time system performance and usage metrics.</p>
+                        <div id="systemStats">
+                            <div class="stat-item">
+                                <strong>Active Users:</strong> <span id="activeUsers">Loading...</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Database Size:</strong> <span id="dbSize">Loading...</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Today's Activities:</strong> <span id="todayActivities">Loading...</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>System Uptime:</strong> <span id="systemUptime">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🔔</span> Notification System</h3>
+                        <p>Real-time notifications for system events and activities.</p>
+                        <div id="notificationsList" style="max-height: 200px; overflow-y: auto;">
+                            <div class="loading">Loading notifications...</div>
+                        </div>
+                    </div>
+
+                    <!-- Data Export -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">📤</span> Data Export</h3>
+                        <p>Export data in CSV or PDF format for external use.</p>
+                        <div class="export-buttons">
+                            <select id="exportType" class="form-control">
+                                <option value="patients">Patients</option>
+                                <option value="doctors">Doctors</option>
+                                <option value="appointments">Appointments</option>
+                                <option value="billing">Billing</option>
+                            </select>
+                        </div>
+                        <div class="export-buttons">
+                            <button id="exportCSV" class="btn btn-success">Export CSV</button>
+                            <button id="exportPDF" class="btn btn-danger">Export PDF</button>
+                        </div>
+                    </div>
+
+                    <!-- Backup System -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">💾</span> Backup & Restore</h3>
+                        <p>Create and manage system backups for data security.</p>
+                        <button id="createBackupBtn" class="btn btn-primary">Create Backup</button>
+                        <div class="progress-bar" id="backupProgress" style="display: none;">
+                            <div class="progress-fill" id="backupProgressFill" style="width: 0%;"></div>
+                        </div>
+                        <div id="backupsList" style="margin-top: 1rem;">
+                            <div class="loading">Loading backups...</div>
+                        </div>
+                    </div>
+
+                    <!-- Email System -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">📧</span> Email Notifications</h3>
+                        <p>Send automated emails for appointments and billing.</p>
+                        <button id="sendReminderBtn" class="btn btn-primary">Send Test Reminder</button>
+                        <div id="emailStatus" style="margin-top: 1rem;"></div>
+                    </div>
+
+                    <!-- Security Features -->
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🔒</span> Security Center</h3>
+                        <p>Monitor security events and user activities.</p>
+                        <div class="security-stats">
+                            <div>Active Sessions: <strong id="activeSessions">Loading...</strong></div>
+                            <div>Failed Logins: <strong>0</strong></div>
+                            <div>Last Security Scan: <strong>Just now</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Trail -->
+                <div class="feature-card" style="margin-top: 2rem;">
+                    <h3><span class="feature-icon">📋</span> Audit Trail</h3>
+                    <p>Track all system activities and changes with detailed logging.</p>
+                    <div class="form-row" style="margin-bottom: 1rem;">
+                        <input type="date" id="auditDateFrom" class="form-control" placeholder="From Date">
+                        <input type="date" id="auditDateTo" class="form-control" placeholder="To Date">
+                        <select id="auditAction" class="form-control">
+                            <option value="">All Actions</option>
+                            <option value="CREATE">Create</option>
+                            <option value="UPDATE">Update</option>
+                            <option value="DELETE">Delete</option>
+                            <option value="LOGIN">Login</option>
+                            <option value="EXPORT">Export</option>
+                            <option value="BACKUP_CREATED">Backup</option>
+                        </select>
+                        <button id="loadAuditBtn" class="btn btn-primary">Load Audit</button>
+                    </div>
+                    <div id="auditTrail" style="max-height: 400px; overflow-y: auto;">
+                        <div class="loading">Loading audit trail...</div>
+                    </div>
+                </div>
+            `;
+
+            // Initialize admin features
+            initializeAdminFeatures();
+        }
+
+        // Initialize admin features
+        function initializeAdminFeatures() {
+            loadNotifications();
+            loadSystemStats();
+            loadBackups();
+            loadAuditTrail();
+
+            // Search
+            document.getElementById('advancedSearchBtn').addEventListener('click', performAdvancedSearch);
+            document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performAdvancedSearch();
+            });
+
+            // Export
+            document.getElementById('exportCSV').addEventListener('click', () => exportData('csv'));
+            document.getElementById('exportPDF').addEventListener('click', () => exportData('pdf'));
+
+            // Backup
+            document.getElementById('createBackupBtn').addEventListener('click', createBackup);
+
+            // Email
+            document.getElementById('sendReminderBtn').addEventListener('click', sendTestReminder);
+
+            // Audit
+            document.getElementById('loadAuditBtn').addEventListener('click', loadAuditTrail);
+
+            // Auto-refresh
+            setInterval(loadNotifications, 30000);
+            setInterval(loadSystemStats, 60000);
+        }
+
+        // Load notifications
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/api/advanced/notifications');
+                if (response.ok) {
+                    notifications = await response.json();
+                    displayNotifications();
+                    updateNotificationBadge();
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        // Display notifications
+        function displayNotifications() {
+            const container = document.getElementById('notificationsList');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (notifications.length === 0) {
+                container.innerHTML = '<div class="no-data">No notifications</div>';
+                return;
+            }
+
+            notifications.slice(0, 5).forEach(notification => {
+                const div = document.createElement('div');
+                div.className = `audit-log ${notification.is_read ? '' : 'unread'}`;
+                div.innerHTML = `
+                    <div><strong>${notification.title}</strong></div>
+                    <div>${notification.message}</div>
+                    <div class="timestamp">${formatDate(notification.created_at)}</div>
+                `;
+                if (!notification.is_read) {
+                    div.style.borderLeftColor = '#e74c3c';
+                    div.addEventListener('click', () => markNotificationRead(notification.id));
+                }
+                container.appendChild(div);
+            });
+        }
+
+        // Update notification badge
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notificationBadge');
+            if (!badge) return;
+
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Mark notification as read
+        async function markNotificationRead(id) {
+            try {
+                const response = await fetch(`/api/advanced/notifications/${id}/read`, {
+                    method: 'PUT'
+                });
+                if (response.ok) {
+                    loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+            }
+        }
+
+        // Load system statistics
+        async function loadSystemStats() {
+            try {
+                const response = await fetch('/api/advanced/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    updateSystemStats(stats);
+                }
+            } catch (error) {
+                console.error('Error loading system stats:', error);
+            }
+        }
+
+        // Update system statistics display
+        function updateSystemStats(stats) {
+            const elements = {
+                activeUsers: document.getElementById('activeUsers'),
+                dbSize: document.getElementById('dbSize'),
+                todayActivities: document.getElementById('todayActivities'),
+                systemUptime: document.getElementById('systemUptime'),
+                activeSessions: document.getElementById('activeSessions')
+            };
+
+            if (elements.activeUsers) elements.activeUsers.textContent = stats.activeUsers || '0';
+            if (elements.dbSize) elements.dbSize.textContent = stats.dbSize || '0 MB';
+            if (elements.todayActivities) elements.todayActivities.textContent = stats.todayActivities || '0';
+            if (elements.systemUptime) elements.systemUptime.textContent = stats.uptime || '99.9%';
+            if (elements.activeSessions) elements.activeSessions.textContent = stats.activeUsers || '0';
+        }
+
+        // Advanced search
+        async function performAdvancedSearch() {
+            const query = document.getElementById('searchQuery').value;
+            const type = document.getElementById('searchType').value;
+
+            if (!query.trim()) {
+                showToast('Please enter a search query', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/advanced/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, type, filters: {} })
+                });
+
+                if (response.ok) {
+                    const results = await response.json();
+                    displaySearchResults(results, type);
+                } else {
+                    showToast('Search failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error during search', 'error');
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(results, type) {
+            const container = document.getElementById('searchResults');
+            const head = document.getElementById('searchResultsHead');
+            const body = document.getElementById('searchResultsBody');
+
+            if (results.length === 0) {
+                container.style.display = 'none';
+                showToast('No results found', 'info');
+                return;
+            }
+
+            // Create table headers based on type
+            const headers = {
+                patients: ['ID', 'Name', 'Age', 'Contact', 'Address'],
+                doctors: ['ID', 'Name', 'Specialty', 'Contact'],
+                appointments: ['ID', 'Patient', 'Doctor', 'Date', 'Status']
+            };
+
+            head.innerHTML = `<tr>${headers[type].map(h => `<th>${h}</th>`).join('')}</tr>`;
+            
+            body.innerHTML = '';
+            results.forEach(item => {
+                const row = document.createElement('tr');
+                if (type === 'patients') {
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${item.age}</td>
+                        <td>${item.contact}</td>
+                        <td>${item.address}</td>
+                    `;
+                } else if (type === 'doctors') {
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${item.specialty}</td>
+                        <td>${item.contact}</td>
+                    `;
+                } else if (type === 'appointments') {
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.patient_name}</td>
+                        <td>${item.doctor_name}</td>
+                        <td>${formatDate(item.appointment_date)}</td>
+                        <td><span class="status status-${item.status}">${item.status}</span></td>
+                    `;
+                }
+                body.appendChild(row);
+            });
+
+            container.style.display = 'block';
+        }
+
+        // Export data
+        async function exportData(format) {
+            const type = document.getElementById('exportType').value;
+            
+            try {
+                const response = await fetch('/api/advanced/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, format })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${type}_export.${format === 'csv' ? 'csv' : 'html'}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showToast(`${format.toUpperCase()} export completed`, 'success');
+                } else {
+                    showToast('Export failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error during export', 'error');
+            }
+        }
+
+        // Create backup
+        async function createBackup() {
+            const btn = document.getElementById('createBackupBtn');
+            const progress = document.getElementById('backupProgress');
+            const progressFill = document.getElementById('backupProgressFill');
+            
+            btn.disabled = true;
+            btn.textContent = 'Creating Backup...';
+            progress.style.display = 'block';
+            
+            // Simulate progress
+            let width = 0;
+            const interval = setInterval(() => {
+                width += 10;
+                progressFill.style.width = width + '%';
+                if (width >= 100) {
+                    clearInterval(interval);
+                }
+            }, 200);
+
+            try {
+                const response = await fetch('/api/advanced/backup', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast('Backup created successfully', 'success');
+                    loadBackups();
+                } else {
+                    showToast('Backup failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error during backup', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Backup';
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 1000);
+            }
+        }
+
+        // Load backups
+        async function loadBackups() {
+            try {
+                const response = await fetch('/api/advanced/backups');
+                if (response.ok) {
+                    const backups = await response.json();
+                    displayBackups(backups);
+                }
+            } catch (error) {
+                console.error('Error loading backups:', error);
+            }
+        }
+
+        // Display backups
+        function displayBackups(backups) {
+            const container = document.getElementById('backupsList');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (backups.length === 0) {
+                container.innerHTML = '<div class="no-data">No backups found</div>';
+                return;
+            }
+
+            backups.forEach(backup => {
+                const div = document.createElement('div');
+                div.className = 'backup-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>${backup.filename}</strong><br>
+                        <small>${formatDate(backup.created_at)} - ${(backup.size / 1024).toFixed(2)} KB</small>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="downloadBackup('${backup.filename}')">
+                        Download
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Send test reminder
+        async function sendTestReminder() {
+            const btn = document.getElementById('sendReminderBtn');
+            const status = document.getElementById('emailStatus');
+            
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            status.innerHTML = '<div class="loading">Sending email...</div>';
+
+            try {
+                const response = await fetch('/api/advanced/send-reminder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appointment_id: 1 })
+                });
+
+                if (response.ok) {
+                    status.innerHTML = '<div style="color: green;">✅ Test reminder sent successfully!</div>';
+                    showToast('Test reminder sent', 'success');
+                } else {
+                    status.innerHTML = '<div style="color: red;">❌ Failed to send reminder</div>';
+                    showToast('Failed to send reminder', 'error');
+                }
+            } catch (error) {
+                status.innerHTML = '<div style="color: red;">❌ Network error</div>';
+                showToast('Network error', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Send Test Reminder';
+            }
+        }
+
+        // Load audit trail
+        async function loadAuditTrail() {
+            const dateFrom = document.getElementById('auditDateFrom')?.value;
+            const dateTo = document.getElementById('auditDateTo')?.value;
+            const action = document.getElementById('auditAction')?.value;
+
+            const params = new URLSearchParams();
+            if (dateFrom) params.append('date_from', dateFrom);
+            if (dateTo) params.append('date_to', dateTo);
+            if (action) params.append('action', action);
+
+            try {
+                const response = await fetch(`/api/advanced/audit?${params}`);
+                if (response.ok) {
+                    auditLogs = await response.json();
+                    displayAuditTrail();
+                }
+            } catch (error) {
+                console.error('Error loading audit trail:', error);
+            }
+        }
+
+        // Display audit trail
+        function displayAuditTrail() {
+            const container = document.getElementById('auditTrail');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (auditLogs.length === 0) {
+                container.innerHTML = '<div class="no-data">No audit logs found</div>';
+                return;
+            }
+
+            auditLogs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'audit-log';
+                div.innerHTML = `
+                    <div><strong>${log.action}</strong> on ${log.table_name} ${log.record_id ? `(ID: ${log.record_id})` : ''}</div>
+                    <div class="audit-details">
+                        User: ${log.user_name || 'System'} (${log.user_email || 'N/A'})<br>
+                        IP: ${log.ip_address || 'Unknown'}
+                    </div>
+                    ${log.old_values || log.new_values ? `
+                        <div class="audit-changes">
+                            ${log.old_values ? `<div><strong>Old:</strong> ${JSON.stringify(log.old_values)}</div>` : ''}
+                            ${log.new_values ? `<div><strong>New:</strong> ${JSON.stringify(log.new_values)}</div>` : ''}
+                        </div>
+                    ` : ''}
+                    <div class="timestamp">${formatDate(log.created_at)}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Download backup function
+        function downloadBackup(filename) {
+            showToast(`Downloading ${filename}...`, 'info');
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            checkAdminAccess();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctors - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html" class="active">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Doctor Management</h1>
+                <div class="header-actions">
+                    <button id="addDoctorBtn" class="btn btn-primary">Add Doctor</button>
+                </div>
+            </header>
+
+            <div class="content-section">
+                <div class="table-container">
+                    <table id="doctorsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Specialty</th>
+                                <th>Contact</th>
+                                <th>Schedule</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="loading">Loading doctors...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Doctor Modal -->
+    <div id="doctorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Doctor</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="doctorForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="doctorName">Name *</label>
+                        <input type="text" id="doctorName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="doctorSpecialty">Specialty *</label>
+                        <input type="text" id="doctorSpecialty" name="specialty" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="doctorContact">Contact *</label>
+                    <input type="tel" id="doctorContact" name="contact" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="doctorSchedule">Schedule</label>
+                    <textarea id="doctorSchedule" name="schedule" rows="4" placeholder="e.g., Mon-Fri: 9:00 AM - 5:00 PM"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Doctor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentDoctorId = null;
+        let doctors = [];
+
+        // Load doctors
+        async function loadDoctors() {
+            try {
+                const response = await fetch('/api/doctors');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    doctors = data;
+                    displayDoctors(doctors);
+                } else {
+                    showToast('Failed to load doctors', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading doctors', 'error');
+            }
+        }
+
+        // Display doctors in table
+        function displayDoctors(doctorsData) {
+            const tbody = document.querySelector('#doctorsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (doctorsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No doctors found</td></tr>';
+                return;
+            }
+            
+            doctorsData.forEach(doctor => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${doctor.id}</td>
+                    <td>${doctor.name}</td>
+                    <td>${doctor.specialty}</td>
+                    <td>${doctor.contact}</td>
+                    <td>${doctor.schedule || 'Not specified'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="editDoctor(${doctor.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDoctor(${doctor.id})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Add doctor
+        function addDoctor() {
+            currentDoctorId = null;
+            document.getElementById('modalTitle').textContent = 'Add Doctor';
+            document.getElementById('doctorForm').reset();
+            document.getElementById('doctorModal').style.display = 'block';
+        }
+
+        // Edit doctor
+        function editDoctor(id) {
+            const doctor = doctors.find(d => d.id === id);
+            if (!doctor) return;
+            
+            currentDoctorId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Doctor';
+            document.getElementById('doctorName').value = doctor.name;
+            document.getElementById('doctorSpecialty').value = doctor.specialty;
+            document.getElementById('doctorContact').value = doctor.contact;
+            document.getElementById('doctorSchedule').value = doctor.schedule || '';
+            document.getElementById('doctorModal').style.display = 'block';
+        }
+
+        // Delete doctor
+        async function deleteDoctor(id) {
+            if (!confirm('Are you sure you want to delete this doctor?')) return;
+            
+            try {
+                const response = await fetch(`/api/doctors/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('Doctor deleted successfully', 'success');
+                    loadDoctors();
+                } else {
+                    showToast(data.error || 'Failed to delete doctor', 'error');
+                }
+            } catch (error) {
+                showToast('Network error deleting doctor', 'error');
+            }
+        }
+
+        // Save doctor
+        async function saveDoctor(formData) {
+            const url = currentDoctorId ? `/api/doctors/${currentDoctorId}` : '/api/doctors';
+            const method = currentDoctorId ? 'PUT' : 'POST';
+            
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast(currentDoctorId ? 'Doctor updated successfully' : 'Doctor added successfully', 'success');
+                    document.getElementById('doctorModal').style.display = 'none';
+                    loadDoctors();
+                } else {
+                    showToast(data.error || 'Failed to save doctor', 'error');
+                }
+            } catch (error) {
+                showToast('Network error saving doctor', 'error');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadDoctors();
+            
+            // Add doctor button
+            document.getElementById('addDoctorBtn').addEventListener('click', addDoctor);
+            
+            // Modal close
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('doctorModal').style.display = 'none';
+            });
+            
+            // Cancel button
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                document.getElementById('doctorModal').style.display = 'none';
+            });
+            
+            // Form submit
+            document.getElementById('doctorForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const doctorData = Object.fromEntries(formData);
+                saveDoctor(doctorData);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('doctorModal')) {
+                    document.getElementById('doctorModal').style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

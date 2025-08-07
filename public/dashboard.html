@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html" class="active">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Dashboard</h1>
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalPatients">0</h3>
+                            <p>Total Patients</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👨‍⚕️</div>
+                        <div class="stat-info">
+                            <h3 id="totalDoctors">0</h3>
+                            <p>Total Doctors</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <h3 id="totalAppointments">0</h3>
+                            <p>Total Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🕐</div>
+                        <div class="stat-info">
+                            <h3 id="todayAppointments">0</h3>
+                            <p>Today's Appointments</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-section">
+                    <h2>Recent Appointments</h2>
+                    <div class="table-container">
+                        <table id="recentAppointmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="loading">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        // Dashboard specific functionality
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/reports/overview');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('totalPatients').textContent = data.totalPatients;
+                    document.getElementById('totalDoctors').textContent = data.totalDoctors;
+                    document.getElementById('totalAppointments').textContent = data.totalAppointments;
+                    document.getElementById('todayAppointments').textContent = data.todayAppointments;
+                    
+                    // Load recent appointments
+                    const tbody = document.querySelector('#recentAppointmentsTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    if (!data.recentAppointments || data.recentAppointments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No recent appointments</td></tr>';
+                    } else {
+                        data.recentAppointments.forEach(appointment => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${appointment.patient_name}</td>
+                                <td>${appointment.doctor_name}</td>
+                                <td>${formatDate(appointment.appointment_date)}</td>
+                                <td>${appointment.appointment_time}</td>
+                                <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    }
+                } else {
+                    console.error('Failed to load dashboard data:', data);
+                    showToast('Failed to load dashboard data', 'error');
+                }
+            } catch (error) {
+                console.error('Network error loading dashboard:', error);
+                showToast('Network error loading dashboard', 'error');
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadDashboardData();
+        });
+
+        // Helper function to format date
+        function formatDate(date) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(date).toLocaleDateString(undefined, options);
+        }
+
+        // Helper function to show toast messages
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Function to check authentication and load user info
+        function checkAuthAndLoadUser() {
+            // Placeholder for authentication check and user info loading
+            const userName = document.getElementById('userName');
+            userName.textContent = 'John Doe'; // Example user name
+        }
+    </script>
+</body>
+</html>

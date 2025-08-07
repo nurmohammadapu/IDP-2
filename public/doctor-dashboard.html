@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Doctor Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="doctor-dashboard.html" class="active">📊 Dashboard</a></li>
+                <li><a href="doctor-appointments.html">📅 My Appointments</a></li>
+                <li><a href="doctor-patients.html">👥 My Patients</a></li>
+                <li><a href="doctor-schedule.html">🕐 My Schedule</a></li>
+                <li><a href="doctor-profile.html">👤 My Profile</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Doctor Dashboard</h1>
+                <div class="header-actions">
+                    <button id="updateScheduleBtn" class="btn btn-primary">Update Schedule</button>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <h3 id="todayAppointments">0</h3>
+                            <p>Today's Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalPatients">0</h3>
+                            <p>Total Patients</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🕐</div>
+                        <div class="stat-info">
+                            <h3 id="upcomingAppointments">0</h3>
+                            <p>Upcoming Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <h3 id="completedToday">0</h3>
+                            <p>Completed Today</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section">
+                        <h2>Today's Appointments</h2>
+                        <div class="table-container">
+                            <table id="todayAppointmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Contact</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading appointments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Upcoming Appointments</h2>
+                        <div class="table-container">
+                            <table id="upcomingAppointmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading appointments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Appointment Action Modal -->
+    <div id="appointmentActionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="actionModalTitle">Update Appointment</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="appointmentActionForm">
+                <input type="hidden" id="appointmentId">
+                
+                <div class="form-group">
+                    <label for="appointmentStatus">Status *</label>
+                    <select id="appointmentStatus" name="status" required>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appointmentNotes">Notes/Prescription</label>
+                    <textarea id="appointmentNotes" name="notes" rows="5" placeholder="Add notes, prescription, or treatment details..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelActionBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Appointment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Load doctor dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/doctors/dashboard');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update stats
+                    document.getElementById('todayAppointments').textContent = data.todayAppointments || 0;
+                    document.getElementById('totalPatients').textContent = data.totalPatients || 0;
+                    document.getElementById('upcomingAppointments').textContent = data.upcomingAppointments || 0;
+                    document.getElementById('completedToday').textContent = data.completedToday || 0;
+                    
+                    // Load today's appointments
+                    displayTodayAppointments(data.todayAppointmentsList || []);
+                    
+                    // Load upcoming appointments
+                    displayUpcomingAppointments(data.upcomingAppointmentsList || []);
+                } else {
+                    showToast('Failed to load dashboard data', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading dashboard', 'error');
+            }
+        }
+
+        // Display today's appointments
+        function displayTodayAppointments(appointments) {
+            const tbody = document.querySelector('#todayAppointmentsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No appointments for today</td></tr>';
+                return;
+            }
+            
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.patient_name}</td>
+                    <td>${appointment.patient_contact}</td>
+                    <td>${appointment.notes || 'General consultation'}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}')">Update</button>
+                        ${appointment.status !== 'completed' ? 
+                            `<button class="btn btn-sm btn-success" onclick="markCompleted(${appointment.id})">Complete</button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Display upcoming appointments
+        function displayUpcomingAppointments(appointments) {
+            const tbody = document.querySelector('#upcomingAppointmentsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No upcoming appointments</td></tr>';
+                return;
+            }
+            
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(appointment.appointment_date)}</td>
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.patient_name}</td>
+                    <td>${appointment.patient_contact}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}')">Update</button>
+                        ${appointment.status === 'pending' ? 
+                            `<button class="btn btn-sm btn-success" onclick="confirmAppointment(${appointment.id})">Confirm</button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update appointment
+        function updateAppointment(appointmentId, patientName) {
+            document.getElementById('appointmentId').value = appointmentId;
+            document.getElementById('actionModalTitle').textContent = `Update Appointment - ${patientName}`;
+            document.getElementById('appointmentActionModal').style.display = 'block';
+        }
+
+        // Mark appointment as completed
+        async function markCompleted(appointmentId) {
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'completed' })
+                });
+                
+                if (response.ok) {
+                    showToast('Appointment marked as completed', 'success');
+                    loadDashboardData();
+                } else {
+                    showToast('Failed to update appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Confirm appointment
+        async function confirmAppointment(appointmentId) {
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'confirmed' })
+                });
+                
+                if (response.ok) {
+                    showToast('Appointment confirmed', 'success');
+                    loadDashboardData();
+                } else {
+                    showToast('Failed to confirm appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Save appointment update
+        async function saveAppointmentUpdate(formData) {
+            const appointmentId = document.getElementById('appointmentId').value;
+            
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    showToast('Appointment updated successfully', 'success');
+                    document.getElementById('appointmentActionModal').style.display = 'none';
+                    loadDashboardData();
+                } else {
+                    showToast('Failed to update appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Check authentication and load user
+        async function checkAuthAndLoadUser() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    // Check if user is doctor
+                    if (currentUser.role !== 'doctor') {
+                        showToast('Access denied. Doctor access only.', 'error');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    document.getElementById('userName').textContent = `Dr. ${currentUser.name}`;
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (error) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadDashboardData();
+            
+            // Modal close
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('appointmentActionModal').style.display = 'none';
+            });
+            
+            // Cancel button
+            document.getElementById('cancelActionBtn').addEventListener('click', () => {
+                document.getElementById('appointmentActionModal').style.display = 'none';
+            });
+            
+            // Form submit
+            document.getElementById('appointmentActionForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const updateData = Object.fromEntries(formData);
+                saveAppointmentUpdate(updateData);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('appointmentActionModal')) {
+                    document.getElementById('appointmentActionModal').style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

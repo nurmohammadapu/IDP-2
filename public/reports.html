@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html" class="active">📈 Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Reports & Analytics</h1>
+            </header>
+
+            <div class="reports-content">
+                <!-- Overview Stats -->
+                <div class="stats-section">
+                    <h2>Overview Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <h3 id="totalPatients">0</h3>
+                                <p>Total Patients</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">👨‍⚕️</div>
+                            <div class="stat-info">
+                                <h3 id="totalDoctors">0</h3>
+                                <p>Total Doctors</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-info">
+                                <h3 id="totalAppointments">0</h3>
+                                <p>Total Appointments</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">🕐</div>
+                            <div class="stat-info">
+                                <h3 id="todayAppointments">0</h3>
+                                <p>Today's Appointments</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Reports -->
+                <div class="financial-section">
+                    <h2>Financial Reports</h2>
+                    <div class="financial-grid">
+                        <div class="financial-card">
+                            <h3>Total Revenue</h3>
+                            <div class="amount" id="totalRevenue">$0.00</div>
+                        </div>
+                        
+                        <div class="financial-card">
+                            <h3>Pending Payments</h3>
+                            <div class="amount pending" id="pendingPayments">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Revenue -->
+                <div class="revenue-section">
+                    <h2>Recent Daily Revenue</h2>
+                    <div class="table-container">
+                        <table id="revenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="2" class="loading">Loading revenue data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monthly Revenue -->
+                <div class="monthly-section">
+                    <h2>Monthly Revenue</h2>
+                    <div class="table-container">
+                        <table id="monthlyRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="2" class="loading">Loading monthly data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        // Load overview data
+        async function loadOverviewData() {
+            try {
+                const response = await fetch('/api/reports/overview');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('totalPatients').textContent = data.totalPatients;
+                    document.getElementById('totalDoctors').textContent = data.totalDoctors;
+                    document.getElementById('totalAppointments').textContent = data.totalAppointments;
+                    document.getElementById('todayAppointments').textContent = data.todayAppointments;
+                } else {
+                    showToast('Failed to load overview data', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading overview data', 'error');
+            }
+        }
+
+        // Load financial data
+        async function loadFinancialData() {
+            try {
+                const response = await fetch('/api/reports/financial');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('totalRevenue').textContent = `$${parseFloat(data.totalRevenue || 0).toFixed(2)}`;
+                    document.getElementById('pendingPayments').textContent = `$${parseFloat(data.pendingPayments || 0).toFixed(2)}`;
+                    
+                    // Load daily revenue table
+                    const revenueTableBody = document.querySelector('#revenueTable tbody');
+                    revenueTableBody.innerHTML = '';
+                    
+                    if (data.dailyRevenue.length === 0) {
+                        revenueTableBody.innerHTML = '<tr><td colspan="2" class="no-data">No revenue data available</td></tr>';
+                    } else {
+                        data.dailyRevenue.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${formatDate(item.date)}</td>
+                                <td>$${parseFloat(item.revenue).toFixed(2)}</td>
+                            `;
+                            revenueTableBody.appendChild(row);
+                        });
+                    }
+                    
+                    // Load monthly revenue table
+                    const monthlyTableBody = document.querySelector('#monthlyRevenueTable tbody');
+                    monthlyTableBody.innerHTML = '';
+                    
+                    if (data.monthlyRevenue.length === 0) {
+                        monthlyTableBody.innerHTML = '<tr><td colspan="2" class="no-data">No monthly data available</td></tr>';
+                    } else {
+                        data.monthlyRevenue.forEach(item => {
+                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                            const monthName = monthNames[item.month - 1];
+                            
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${monthName} ${item.year}</td>
+                                <td>$${parseFloat(item.revenue).toFixed(2)}</td>
+                            `;
+                            monthlyTableBody.appendChild(row);
+                        });
+                    }
+                } else {
+                    showToast('Failed to load financial data', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading financial data', 'error');
+            }
+        }
+
+        // Initialize reports page
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadOverviewData();
+            loadFinancialData();
+        });
+    </script>
+</body>
+</html>

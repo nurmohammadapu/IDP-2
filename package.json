@@ -1,0 +1,17 @@
+{
+  "name": "hospital",
+  "version": "1.0.0",
+  "description": "A complete Hospital Management Software built with pure vanilla technologies - no frameworks, just clean and efficient code.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "mysql": "^2.18.1"
+  }
+}

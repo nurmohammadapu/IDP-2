@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patients.html" class="active">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Patient Management</h1>
+                <div class="header-actions">
+                    <input type="text" id="searchInput" placeholder="Search patients..." class="search-input">
+                    <button id="addPatientBtn" class="btn btn-primary">Add Patient</button>
+                </div>
+            </header>
+
+            <div class="content-section">
+                <div class="table-container">
+                    <table id="patientsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Age</th>
+                                <th>Gender</th>
+                                <th>Contact</th>
+                                <th>Address</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="loading">Loading patients...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Patient Modal -->
+    <div id="patientModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Patient</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="patientForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientName">Name *</label>
+                        <input type="text" id="patientName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="patientAge">Age *</label>
+                        <input type="number" id="patientAge" name="age" required min="1" max="120">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientGender">Gender *</label>
+                        <select id="patientGender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="patientContact">Contact *</label>
+                        <input type="tel" id="patientContact" name="contact" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="patientAddress">Address *</label>
+                    <textarea id="patientAddress" name="address" required rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="patientHistory">Medical History</label>
+                    <textarea id="patientHistory" name="medical_history" rows="4"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Patient</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentPatientId = null;
+        let patients = [];
+
+        // Load patients
+        async function loadPatients() {
+            try {
+                const response = await fetch('/api/patients');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    patients = data;
+                    displayPatients(patients);
+                } else {
+                    showToast('Failed to load patients', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading patients', 'error');
+            }
+        }
+
+        // Display patients in table
+        function displayPatients(patientsData) {
+            const tbody = document.querySelector('#patientsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (patientsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No patients found</td></tr>';
+                return;
+            }
+            
+            patientsData.forEach(patient => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${patient.id}</td>
+                    <td>${patient.name}</td>
+                    <td>${patient.age}</td>
+                    <td>${patient.gender}</td>
+                    <td>${patient.contact}</td>
+                    <td>${patient.address}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="editPatient(${patient.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePatient(${patient.id})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Search patients
+        function searchPatients() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredPatients = patients.filter(patient => 
+                patient.name.toLowerCase().includes(searchTerm) ||
+                patient.contact.includes(searchTerm)
+            );
+            displayPatients(filteredPatients);
+        }
+
+        // Add patient
+        function addPatient() {
+            currentPatientId = null;
+            document.getElementById('modalTitle').textContent = 'Add Patient';
+            document.getElementById('patientForm').reset();
+            document.getElementById('patientModal').style.display = 'block';
+        }
+
+        // Edit patient
+        function editPatient(id) {
+            const patient = patients.find(p => p.id === id);
+            if (!patient) return;
+            
+            currentPatientId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Patient';
+            document.getElementById('patientName').value = patient.name;
+            document.getElementById('patientAge').value = patient.age;
+            document.getElementById('patientGender').value = patient.gender;
+            document.getElementById('patientContact').value = patient.contact;
+            document.getElementById('patientAddress').value = patient.address;
+            document.getElementById('patientHistory').value = patient.medical_history || '';
+            document.getElementById('patientModal').style.display = 'block';
+        }
+
+        // Delete patient
+        async function deletePatient(id) {
+            if (!confirm('Are you sure you want to delete this patient?')) return;
+            
+            try {
+                const response = await fetch(`/api/patients/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('Patient deleted successfully', 'success');
+                    loadPatients();
+                } else {
+                    showToast(data.error || 'Failed to delete patient', 'error');
+                }
+            } catch (error) {
+                showToast('Network error deleting patient', 'error');
+            }
+        }
+
+        // Save patient
+        async function savePatient(formData) {
+            const url = currentPatientId ? `/api/patients/${currentPatientId}` : '/api/patients';
+            const method = currentPatientId ? 'PUT' : 'POST';
+            
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast(currentPatientId ? 'Patient updated successfully' : 'Patient added successfully', 'success');
+                    document.getElementById('patientModal').style.display = 'none';
+                    loadPatients();
+                } else {
+                    showToast(data.error || 'Failed to save patient', 'error');
+                }
+            } catch (error) {
+                showToast('Network error saving patient', 'error');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadPatients();
+            
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', searchPatients);
+            
+            // Add patient button
+            document.getElementById('addPatientBtn').addEventListener('click', addPatient);
+            
+            // Modal close
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('patientModal').style.display = 'none';
+            });
+            
+            // Cancel button
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                document.getElementById('patientModal').style.display = 'none';
+            });
+            
+            // Form submit
+            document.getElementById('patientForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const patientData = Object.fromEntries(formData);
+                savePatient(patientData);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('patientModal')) {
+                    document.getElementById('patientModal').style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Patient Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="patient-dashboard.html" class="active">📊 Dashboard</a></li>
+                <li><a href="patient-appointments.html">📅 My Appointments</a></li>
+                <li><a href="patient-bills.html">💰 My Bills</a></li>
+                <li><a href="patient-profile.html">👤 My Profile</a></li>
+                <li><a href="patient-medical-history.html">📋 Medical History</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Welcome to Your Patient Portal</h1>
+                <div class="header-actions">
+                    <button id="bookAppointmentBtn" class="btn btn-primary">Book New Appointment</button>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <h3 id="totalAppointments">0</h3>
+                            <p>Total Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🕐</div>
+                        <div class="stat-info">
+                            <h3 id="upcomingAppointments">0</h3>
+                            <p>Upcoming Appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <h3 id="totalBills">৳0</h3>
+                            <p>Total Bills</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-info">
+                            <h3 id="pendingBills">৳0</h3>
+                            <p>Pending Bills</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section">
+                        <h2>Upcoming Appointments</h2>
+                        <div class="table-container">
+                            <table id="upcomingAppointmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Doctor</th>
+                                        <th>Specialty</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading appointments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Recent Bills</h2>
+                        <div class="table-container">
+                            <table id="recentBillsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Bill ID</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Paid</th>
+                                        <th>Due</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" class="loading">Loading bills...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Book Appointment Modal -->
+    <div id="appointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Book New Appointment</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="appointmentForm">
+                <div class="form-group">
+                    <label for="doctorSelect">Select Doctor *</label>
+                    <select id="doctorSelect" name="doctor_id" required>
+                        <option value="">Choose a doctor...</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="appointmentDate">Preferred Date *</label>
+                        <input type="date" id="appointmentDate" name="appointment_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointmentTime">Preferred Time *</label>
+                        <select id="appointmentTime" name="appointment_time" required>
+                            <option value="">Select time...</option>
+                            <option value="09:00">09:00 AM</option>
+                            <option value="09:30">09:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="14:00">02:00 PM</option>
+                            <option value="14:30">02:30 PM</option>
+                            <option value="15:00">03:00 PM</option>
+                            <option value="15:30">03:30 PM</option>
+                            <option value="16:00">04:00 PM</option>
+                            <option value="16:30">04:30 PM</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appointmentNotes">Reason for Visit</label>
+                    <textarea id="appointmentNotes" name="notes" rows="3" placeholder="Describe your symptoms or reason for the appointment..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Book Appointment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUser = null;
+        let doctors = [];
+
+        // Load patient dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/patients/dashboard');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update stats
+                    document.getElementById('totalAppointments').textContent = data.totalAppointments || 0;
+                    document.getElementById('upcomingAppointments').textContent = data.upcomingAppointments || 0;
+                    document.getElementById('totalBills').textContent = `৳${(data.totalBills || 0).toFixed(2)}`;
+                    document.getElementById('pendingBills').textContent = `৳${(data.pendingBills || 0).toFixed(2)}`;
+                    
+                    // Load upcoming appointments
+                    displayUpcomingAppointments(data.appointments || []);
+                    
+                    // Load recent bills
+                    displayRecentBills(data.bills || []);
+                } else {
+                    showToast('Failed to load dashboard data', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading dashboard', 'error');
+            }
+        }
+
+        // Display upcoming appointments
+        function displayUpcomingAppointments(appointments) {
+            const tbody = document.querySelector('#upcomingAppointmentsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No upcoming appointments</td></tr>';
+                return;
+            }
+            
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(appointment.appointment_date)}</td>
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.doctor_name}</td>
+                    <td>${appointment.doctor_specialty}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        ${appointment.status === 'pending' ? 
+                            `<button class="btn btn-sm btn-danger" onclick="cancelAppointment(${appointment.id})">Cancel</button>` : 
+                            '-'
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Display recent bills
+        function displayRecentBills(bills) {
+            const tbody = document.querySelector('#recentBillsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (bills.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No bills found</td></tr>';
+                return;
+            }
+            
+            bills.forEach(bill => {
+                const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
+                const status = dueAmount <= 0 ? 'paid' : 'pending';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>BILL-${String(bill.id).padStart(6, '0')}</td>
+                    <td>${formatDate(bill.billing_date)}</td>
+                    <td>৳${parseFloat(bill.total_amount).toFixed(2)}</td>
+                    <td>৳${parseFloat(bill.paid_amount || 0).toFixed(2)}</td>
+                    <td>৳${dueAmount.toFixed(2)}</td>
+                    <td><span class="status status-${status}">${status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewBill(${bill.id})">View</button>
+                        ${dueAmount > 0 ? `<button class="btn btn-sm btn-success" onclick="payBill(${bill.id})">Pay</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Load doctors for appointment booking
+        async function loadDoctors() {
+            try {
+                const response = await fetch('/api/doctors');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    doctors = data;
+                    populateDoctorDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading doctors:', error);
+            }
+        }
+
+        // Populate doctor dropdown
+        function populateDoctorDropdown() {
+            const doctorSelect = document.getElementById('doctorSelect');
+            doctorSelect.innerHTML = '<option value="">Choose a doctor...</option>';
+            
+            doctors.forEach(doctor => {
+                const option = document.createElement('option');
+                option.value = doctor.id;
+                option.textContent = `Dr. ${doctor.name} - ${doctor.specialty}`;
+                doctorSelect.appendChild(option);
+            });
+        }
+
+        // Book appointment
+        function bookAppointment() {
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').min = today;
+            
+            document.getElementById('appointmentModal').style.display = 'block';
+        }
+
+        // Cancel appointment
+        async function cancelAppointment(appointmentId) {
+            if (!confirm('Are you sure you want to cancel this appointment?')) return;
+            
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'cancelled' })
+                });
+                
+                if (response.ok) {
+                    showToast('Appointment cancelled successfully', 'success');
+                    loadDashboardData();
+                } else {
+                    showToast('Failed to cancel appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // View bill
+        function viewBill(billId) {
+            window.open(`patient-bill-view.html?id=${billId}`, '_blank');
+        }
+
+        // Pay bill
+        function payBill(billId) {
+            window.location.href = `patient-payment.html?bill=${billId}`;
+        }
+
+        // Save appointment
+        async function saveAppointment(formData) {
+            try {
+                const response = await fetch('/api/appointments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('Appointment booked successfully!', 'success');
+                    document.getElementById('appointmentModal').style.display = 'none';
+                    loadDashboardData();
+                } else {
+                    showToast(data.error || 'Failed to book appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error booking appointment', 'error');
+            }
+        }
+
+        // Check authentication and load user
+        async function checkAuthAndLoadUser() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    // Check if user is patient
+                    if (currentUser.role !== 'patient') {
+                        showToast('Access denied. Patient access only.', 'error');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (error) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadDashboardData();
+            loadDoctors();
+            
+            // Book appointment button
+            document.getElementById('bookAppointmentBtn').addEventListener('click', bookAppointment);
+            
+            // Modal close
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('appointmentModal').style.display = 'none';
+            });
+            
+            // Cancel button
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                document.getElementById('appointmentModal').style.display = 'none';
+            });
+            
+            // Form submit
+            document.getElementById('appointmentForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const appointmentData = Object.fromEntries(formData);
+                saveAppointment(appointmentData);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('appointmentModal')) {
+                    document.getElementById('appointmentModal').style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
