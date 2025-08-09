@@ -1,4 +1,4 @@
-const { createDoctor, getAllDoctors, getDoctorById, updateDoctor, deleteDoctor } = require("../models/doctorModel")
+const { createDoctor, getAllDoctors, getDoctorById, updateDoctor, deleteDoctor, searchDoctors  } = require("../models/doctorModel")
 
 async function getAll(req, res) {
   try {
@@ -93,10 +93,23 @@ async function deleteDoctorById(req, res, id) {
   }
 }
 
+async function search(req, res, query) {
+  try {
+    const results = await searchDoctors(query)
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(results))
+  } catch (error) {
+    console.error("Search doctors error:", error)
+    res.writeHead(500, { "Content-Type": "application/json" })
+    res.end(JSON.stringify({ error: "Internal server error" }))
+  }
+}
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
   deleteDoctorById,
+  search
 }

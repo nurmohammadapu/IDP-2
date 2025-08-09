@@ -10,6 +10,7 @@ async function patientRoutes(req, res) {
     if (pathname === "/api/patients" && method === "GET") {
       const { search: searchQuery } = parsedUrl.query
       if (searchQuery) {
+        // Call the search controller function with the query param
         await search(req, res, searchQuery)
       } else {
         await getAll(req, res)
@@ -17,6 +18,7 @@ async function patientRoutes(req, res) {
     } else if (pathname === "/api/patients" && method === "POST") {
       await create(req, res)
     } else if (pathname.match(/^\/api\/patients\/\d+$/) && method === "GET") {
+      // Extract ID from URL
       const id = pathname.split("/")[3]
       await getById(req, res, id)
     } else if (pathname.match(/^\/api\/patients\/\d+$/) && method === "PUT") {

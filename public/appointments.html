@@ -27,10 +27,11 @@
 
         <main class="main-content">
             <header class="main-header">
-                <h1>Appointment Management</h1>
-                <div class="header-actions">
-                    <button id="addAppointmentBtn" class="btn btn-primary">Book Appointment</button>
-                </div>
+            <h1>Appointment Management</h1>
+            <div class="header-actions">
+                <input type="text" id="searchAppointments" placeholder="🔍 Search appointments..." class="search-input">
+                <button id="addAppointmentBtn" class="btn btn-primary">Book Appointment</button>
+            </div>
             </header>
 
             <div class="content-section">
@@ -60,69 +61,425 @@
 
     <!-- Appointment Modal -->
     <div id="appointmentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Book Appointment</h2>
-                <span class="close">&times;</span>
-            </div>
-            <form id="appointmentForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="appointmentPatient">Patient *</label>
-                        <select id="appointmentPatient" name="patient_id" required>
-                            <option value="">Select Patient</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentDoctor">Doctor *</label>
-                        <select id="appointmentDoctor" name="doctor_id" required>
-                            <option value="">Select Doctor</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="appointmentDate">Date *</label>
-                        <input type="date" id="appointmentDate" name="appointment_date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentTime">Time *</label>
-                        <input type="time" id="appointmentTime" name="appointment_time" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="appointmentStatus">Status</label>
-                    <select id="appointmentStatus" name="status">
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="appointmentNotes">Notes</label>
-                    <textarea id="appointmentNotes" name="notes" rows="3"></textarea>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Appointment</button>
-                </div>
-            </form>
+    <div class="modal-content">
+        <div class="modal-header">
+        <h2 id="modalTitle">Book Appointment</h2>
+        <span class="close">&times;</span>
         </div>
-    </div>
+        <form id="appointmentForm">
+        <div class="form-row">
+            <div class="form-group">
+            <label for="patientSearchInput">Patient *</label>
+            <div class="searchable-select" id="patientSelectContainer">
+                <input type="text" id="patientSearchInput" placeholder="Search Patient..." autocomplete="off" required />
+                <div class="options-list" id="patientOptions"></div>
+            </div>
+            <input type="hidden" name="patient_id" id="patient_id" required />
+            </div>
+            <div class="form-group">
+            <label for="doctorSearchInput">Doctor *</label>
+            <div class="searchable-select" id="doctorSelectContainer">
+                <input type="text" id="doctorSearchInput" placeholder="Search Doctor..." autocomplete="off" required />
+                <div class="options-list" id="doctorOptions"></div>
+            </div>
+            <input type="hidden" name="doctor_id" id="doctor_id" required />
+            </div>
+        </div>
 
+        <div class="form-row">
+            <div class="form-group">
+            <label for="appointmentDate">Date *</label>
+            <input type="date" id="appointmentDate" name="appointment_date" required>
+            </div>
+            <div class="form-group">
+            <label for="appointmentTime">Time *</label>
+            <input type="time" id="appointmentTime" name="appointment_time" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="appointmentStatus">Status</label>
+            <select id="appointmentStatus" name="status">
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="appointmentNotes">Notes</label>
+            <textarea id="appointmentNotes" name="notes" rows="3"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Appointment</button>
+        </div>
+        </form>
+    </div>
+    </div>
     <div id="toast" class="toast"></div>
 
     <script src="scripts.js"></script>
+
     <script>
+    let currentAppointmentId = null;
+    let appointments = [];
+    let patients = [];
+    let doctors = [];
+
+    // Debounce utility function
+    function debounce(fn, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    // Option select handler: Set input value and hidden input id, then hide options
+    function selectOption(inputEl, optionsDiv, hiddenInput, item) {
+        inputEl.value = item.name + (item.specialty ? ` - ${item.specialty}` : '');
+        hiddenInput.value = item.id;
+        optionsDiv.style.display = 'none';
+    }
+
+    // Fetch search results from API and display options
+    async function fetchAndShowOptions(apiUrl, query, inputEl, optionsDiv, hiddenInput) {
+        if (!query || query.length < 2) {
+            optionsDiv.style.display = 'none';
+            hiddenInput.value = ''; // clear selection if query too short
+            return;
+        }
+
+        try {
+            const res = await fetch(`${apiUrl}?search=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+
+            optionsDiv.innerHTML = '';
+            if (data.length === 0) {
+                optionsDiv.innerHTML = '<div class="option-item">No results found</div>';
+            } else {
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'option-item';
+                    div.textContent = item.name + (item.specialty ? ` - ${item.specialty}` : '');
+                    div.addEventListener('click', () => selectOption(inputEl, optionsDiv, hiddenInput, item));
+                    optionsDiv.appendChild(div);
+                });
+            }
+            optionsDiv.style.display = 'block';
+        } catch (error) {
+            optionsDiv.innerHTML = '<div class="option-item">Error loading data</div>';
+            optionsDiv.style.display = 'block';
+        }
+    }
+
+    // Load all appointments from backend
+    async function loadAppointments() {
+        try {
+            const response = await fetch('/api/appointments');
+            const data = await response.json();
+
+            if (response.ok) {
+                appointments = data;
+                displayAppointments(appointments);
+            } else {
+                showToast('Failed to load appointments', 'error');
+            }
+        } catch (error) {
+            showToast('Network error loading appointments', 'error');
+        }
+    }
+
+    // Load initial dropdown data (patients and doctors)
+    async function loadDropdownData() {
+        try {
+            const [patientsResponse, doctorsResponse] = await Promise.all([
+                fetch('/api/patients'),
+                fetch('/api/doctors')
+            ]);
+
+            if (patientsResponse.ok && doctorsResponse.ok) {
+                patients = await patientsResponse.json();
+                doctors = await doctorsResponse.json();
+                // Optional: populateDropdowns();
+            } else {
+                showToast('Failed to load dropdown data', 'error');
+            }
+        } catch (error) {
+            showToast('Network error loading dropdown data', 'error');
+        }
+    }
+
+    // Display appointments in the table
+    function displayAppointments(appointmentsData) {
+        const tbody = document.querySelector('#appointmentsTable tbody');
+        tbody.innerHTML = '';
+
+        if (appointmentsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="no-data">No appointments found</td></tr>';
+            return;
+        }
+
+        appointmentsData.forEach(appointment => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${appointment.id}</td>
+                <td>${appointment.patient_name}</td>
+                <td>${appointment.doctor_name}</td>
+                <td>${formatDate(appointment.appointment_date)}</td>
+                <td>${appointment.appointment_time}</td>
+                <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="editAppointment(${appointment.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteAppointment(${appointment.id})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Open modal to add a new appointment
+    window.addAppointment = function() {
+        currentAppointmentId = null;
+        document.getElementById('modalTitle').textContent = 'Book Appointment';
+        document.getElementById('appointmentForm').reset();
+
+        document.getElementById('patientSearchInput').value = '';
+        document.getElementById('patient_id').value = '';
+
+        document.getElementById('doctorSearchInput').value = '';
+        document.getElementById('doctor_id').value = '';
+
+        document.getElementById('appointmentStatus').value = 'pending';
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('appointmentDate').min = today;
+
+        document.getElementById('appointmentModal').style.display = 'block';
+    };
+
+    // Open modal to edit an existing appointment
+    window.editAppointment = function(id) {
+        const appointment = appointments.find(a => a.id === id);
+        if (!appointment) return;
+
+        currentAppointmentId = id;
+        document.getElementById('modalTitle').textContent = 'Edit Appointment';
+
+        document.getElementById('patientSearchInput').value = appointment.patient_name;
+        document.getElementById('patient_id').value = appointment.patient_id;
+
+        document.getElementById('doctorSearchInput').value = appointment.doctor_name + (appointment.doctor_specialty ? ` - ${appointment.doctor_specialty}` : '');
+        document.getElementById('doctor_id').value = appointment.doctor_id;
+
+        document.getElementById('appointmentDate').value = appointment.appointment_date;
+        document.getElementById('appointmentTime').value = appointment.appointment_time;
+        document.getElementById('appointmentStatus').value = appointment.status;
+        document.getElementById('appointmentNotes').value = appointment.notes || '';
+        document.getElementById('appointmentModal').style.display = 'block';
+    };
+
+    // Delete appointment by id
+    async function deleteAppointment(id) {
+        if (!confirm('Are you sure you want to delete this appointment?')) return;
+
+        try {
+            const response = await fetch(`/api/appointments/${id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast('Appointment deleted successfully', 'success');
+                loadAppointments();
+            } else {
+                showToast(data.error || 'Failed to delete appointment', 'error');
+            }
+        } catch (error) {
+            showToast('Network error deleting appointment', 'error');
+        }
+    }
+
+    // Save (create or update) appointment
+    async function saveAppointment(formData) {
+        if (!formData.patient_id || !formData.doctor_id) {
+            showToast('Please select valid Patient and Doctor from the list', 'error');
+            return;
+        }
+
+        const url = currentAppointmentId ? `/api/appointments/${currentAppointmentId}` : '/api/appointments';
+        const method = currentAppointmentId ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(currentAppointmentId ? 'Appointment updated successfully' : 'Appointment booked successfully', 'success');
+                document.getElementById('appointmentModal').style.display = 'none';
+                loadAppointments();
+            } else {
+                showToast(data.error || 'Failed to save appointment', 'error');
+            }
+        } catch (error) {
+            showToast('Network error saving appointment', 'error');
+        }
+    }
+
+    // Filter appointments table on search input
+    document.getElementById('searchAppointments').addEventListener('input', function () {
+        const searchTerm = this.value.toLowerCase();
+        const filtered = appointments.filter(app =>
+            app.patient_name.toLowerCase().includes(searchTerm) ||
+            app.doctor_name.toLowerCase().includes(searchTerm) ||
+            formatDate(app.appointment_date).toLowerCase().includes(searchTerm) ||
+            app.status.toLowerCase().includes(searchTerm)
+        );
+        displayAppointments(filtered);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAuthAndLoadUser();
+        loadAppointments();
+        loadDropdownData();
+
+        // Add appointment button
+        document.getElementById('addAppointmentBtn').addEventListener('click', addAppointment);
+
+        // Modal close buttons
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('appointmentModal').style.display = 'none';
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('appointmentModal').style.display = 'none';
+        });
+
+        // Form submit
+        document.getElementById('appointmentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const appointmentData = Object.fromEntries(formData);
+            saveAppointment(appointmentData);
+        });
+
+        // Close modal if clicked outside modal content
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('appointmentModal')) {
+                document.getElementById('appointmentModal').style.display = 'none';
+            }
+        });
+
+        // Setup patient search inputs
+        const patientInput = document.getElementById('patientSearchInput');
+        const patientOptions = document.getElementById('patientOptions');
+        const patientHidden = document.getElementById('patient_id');
+
+        // Setup doctor search inputs
+        const doctorInput = document.getElementById('doctorSearchInput');
+        const doctorOptions = document.getElementById('doctorOptions');
+        const doctorHidden = document.getElementById('doctor_id');
+
+        // Debounced patient search
+        const debouncedPatientSearch = debounce(() => {
+            fetchAndShowOptions('/api/patients', patientInput.value.trim(), patientInput, patientOptions, patientHidden);
+        }, 300);
+
+        // Debounced doctor search
+        const debouncedDoctorSearch = debounce(() => {
+            fetchAndShowOptions('/api/doctors', doctorInput.value.trim(), doctorInput, doctorOptions, doctorHidden);
+        }, 300);
+
+        // Patient input event
+        patientInput.addEventListener('input', () => {
+            patientHidden.value = '';
+            debouncedPatientSearch();
+        });
+
+        // Doctor input event
+        doctorInput.addEventListener('input', () => {
+            doctorHidden.value = '';
+            debouncedDoctorSearch();
+        });
+
+        // Hide dropdown options if clicked outside
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('patientSelectContainer').contains(e.target)) {
+                patientOptions.style.display = 'none';
+            }
+            if (!document.getElementById('doctorSelectContainer').contains(e.target)) {
+                doctorOptions.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+
+    <!-- <script>
         let currentAppointmentId = null;
         let appointments = [];
         let patients = [];
         let doctors = [];
+
+        // Debounce utility function
+        function debounce(fn, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        };
+        }
+
+        // ফাংশন: অপশন সিলেক্ট করলে ইনপুটে নাম দেখাবে ও hidden input-এ আইডি রাখবে
+        function selectOption(inputEl, optionsDiv, hiddenInput, item) {
+        inputEl.value = item.name + (item.specialty ? ` - ${item.specialty}` : '');
+        hiddenInput.value = item.id;
+        optionsDiv.style.display = 'none';
+        }
+
+        // ফাংশন: API থেকে সার্চ করে অপশনগুলো দেখাবে
+        async function fetchAndShowOptions(apiUrl, query, inputEl, optionsDiv, hiddenInput) {
+        if (!query || query.length < 2) {
+            optionsDiv.style.display = 'none';
+            hiddenInput.value = ''; // clear selection if query too short
+            return;
+        }
+
+        try {
+            const res = await fetch(`${apiUrl}?search=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+
+            optionsDiv.innerHTML = '';
+            if (data.length === 0) {
+            optionsDiv.innerHTML = '<div class="option-item">No results found</div>';
+            } else {
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'option-item';
+                div.textContent = item.name + (item.specialty ? ` - ${item.specialty}` : '');
+                div.addEventListener('click', () => selectOption(inputEl, optionsDiv, hiddenInput, item));
+                optionsDiv.appendChild(div);
+            });
+            }
+            optionsDiv.style.display = 'block';
+        } catch (error) {
+            optionsDiv.innerHTML = '<div class="option-item">Error loading data</div>';
+            optionsDiv.style.display = 'block';
+        }
+        }
 
         // Load appointments
         async function loadAppointments() {
@@ -141,7 +498,7 @@
             }
         }
 
-        // Load patients and doctors for dropdowns
+        // Load patients and doctors for dropdowns (optional, for initial load or other use)
         async function loadDropdownData() {
             try {
                 const [patientsResponse, doctorsResponse] = await Promise.all([
@@ -152,40 +509,13 @@
                 if (patientsResponse.ok && doctorsResponse.ok) {
                     patients = await patientsResponse.json();
                     doctors = await doctorsResponse.json();
-                    
-                    populateDropdowns();
+                    // populateDropdowns(); // Optional, if you want to fill normal selects too
                 } else {
                     showToast('Failed to load dropdown data', 'error');
                 }
             } catch (error) {
                 showToast('Network error loading dropdown data', 'error');
             }
-        }
-
-        // Populate patient and doctor dropdowns
-        function populateDropdowns() {
-            const patientSelect = document.getElementById('appointmentPatient');
-            const doctorSelect = document.getElementById('appointmentDoctor');
-            
-            // Clear existing options
-            patientSelect.innerHTML = '<option value="">Select Patient</option>';
-            doctorSelect.innerHTML = '<option value="">Select Doctor</option>';
-            
-            // Populate patients
-            patients.forEach(patient => {
-                const option = document.createElement('option');
-                option.value = patient.id;
-                option.textContent = patient.name;
-                patientSelect.appendChild(option);
-            });
-            
-            // Populate doctors
-            doctors.forEach(doctor => {
-                const option = document.createElement('option');
-                option.value = doctor.id;
-                option.textContent = `${doctor.name} - ${doctor.specialty}`;
-                doctorSelect.appendChild(option);
-            });
         }
 
         // Display appointments in table
@@ -216,35 +546,49 @@
             });
         }
 
-        // Add appointment
-        function addAppointment() {
+        // New Add appointment (with searchable inputs)
+        window.addAppointment = function() {
             currentAppointmentId = null;
             document.getElementById('modalTitle').textContent = 'Book Appointment';
             document.getElementById('appointmentForm').reset();
+
+            // Clear searchable inputs and hidden inputs
+            document.getElementById('patientSearchInput').value = '';
+            document.getElementById('patient_id').value = '';
+
+            document.getElementById('doctorSearchInput').value = '';
+            document.getElementById('doctor_id').value = '';
+
             document.getElementById('appointmentStatus').value = 'pending';
-            
-            // Set minimum date to today
+
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('appointmentDate').min = today;
-            
-            document.getElementById('appointmentModal').style.display = 'block';
-        }
 
-        // Edit appointment
-        function editAppointment(id) {
+            document.getElementById('appointmentModal').style.display = 'block';
+        };
+
+        // New Edit appointment (with searchable inputs)
+        window.editAppointment = function(id) {
             const appointment = appointments.find(a => a.id === id);
             if (!appointment) return;
-            
+
             currentAppointmentId = id;
             document.getElementById('modalTitle').textContent = 'Edit Appointment';
-            document.getElementById('appointmentPatient').value = appointment.patient_id;
-            document.getElementById('appointmentDoctor').value = appointment.doctor_id;
+
+            // Set searchable patient input and hidden input
+            document.getElementById('patientSearchInput').value = appointment.patient_name;
+            document.getElementById('patient_id').value = appointment.patient_id;
+
+            // Set searchable doctor input and hidden input
+            document.getElementById('doctorSearchInput').value = appointment.doctor_name + (appointment.doctor_specialty ? ` - ${appointment.doctor_specialty}` : '');
+            document.getElementById('doctor_id').value = appointment.doctor_id;
+
             document.getElementById('appointmentDate').value = appointment.appointment_date;
             document.getElementById('appointmentTime').value = appointment.appointment_time;
             document.getElementById('appointmentStatus').value = appointment.status;
             document.getElementById('appointmentNotes').value = appointment.notes || '';
             document.getElementById('appointmentModal').style.display = 'block';
-        }
+        };
 
         // Delete appointment
         async function deleteAppointment(id) {
@@ -270,6 +614,12 @@
 
         // Save appointment
         async function saveAppointment(formData) {
+            // Validate that patient_id and doctor_id are set (to prevent invalid form)
+            if (!formData.patient_id || !formData.doctor_id) {
+                showToast('Please select valid Patient and Doctor from the list', 'error');
+                return;
+            }
+
             const url = currentAppointmentId ? `/api/appointments/${currentAppointmentId}` : '/api/appointments';
             const method = currentAppointmentId ? 'PUT' : 'POST';
             
@@ -296,25 +646,36 @@
             }
         }
 
-        // Event listeners
+        // Search filter on appointments table
+        document.getElementById('searchAppointments').addEventListener('input', function () {
+            const searchTerm = this.value.toLowerCase();
+            const filtered = appointments.filter(app => 
+                app.patient_name.toLowerCase().includes(searchTerm) ||
+                app.doctor_name.toLowerCase().includes(searchTerm) ||
+                formatDate(app.appointment_date).toLowerCase().includes(searchTerm) ||
+                app.status.toLowerCase().includes(searchTerm)
+            );
+            displayAppointments(filtered);
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthAndLoadUser();
             loadAppointments();
             loadDropdownData();
-            
+
             // Add appointment button
             document.getElementById('addAppointmentBtn').addEventListener('click', addAppointment);
-            
+
             // Modal close
             document.querySelector('.close').addEventListener('click', () => {
                 document.getElementById('appointmentModal').style.display = 'none';
             });
-            
+
             // Cancel button
             document.getElementById('cancelBtn').addEventListener('click', () => {
                 document.getElementById('appointmentModal').style.display = 'none';
             });
-            
+
             // Form submit
             document.getElementById('appointmentForm').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -322,14 +683,51 @@
                 const appointmentData = Object.fromEntries(formData);
                 saveAppointment(appointmentData);
             });
-            
+
             // Close modal when clicking outside
             window.addEventListener('click', (e) => {
                 if (e.target === document.getElementById('appointmentModal')) {
                     document.getElementById('appointmentModal').style.display = 'none';
                 }
             });
+
+            // Setup searchable patient & doctor inputs and dropdown options container
+            const patientInput = document.getElementById('patientSearchInput');
+            const patientOptions = document.getElementById('patientOptions');
+            const patientHidden = document.getElementById('patient_id');
+
+            const doctorInput = document.getElementById('doctorSearchInput');
+            const doctorOptions = document.getElementById('doctorOptions');
+            const doctorHidden = document.getElementById('doctor_id');
+
+            // Debounced search handlers
+            const debouncedPatientSearch = debounce(() => {
+                fetchAndShowOptions('/api/patients', patientInput.value.trim(), patientInput, patientOptions, patientHidden);
+            }, 300);
+
+            const debouncedDoctorSearch = debounce(() => {
+                fetchAndShowOptions('/api/doctors', doctorInput.value.trim(), doctorInput, doctorOptions, doctorHidden);
+            }, 300);
+
+            patientInput.addEventListener('input', () => {
+                patientHidden.value = '';
+                debouncedPatientSearch();
+            });
+
+            doctorInput.addEventListener('input', () => {
+                doctorHidden.value = '';
+                debouncedDoctorSearch();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!document.getElementById('patientSelectContainer').contains(e.target)) {
+                    patientOptions.style.display = 'none';
+                }
+                if (!document.getElementById('doctorSelectContainer').contains(e.target)) {
+                    doctorOptions.style.display = 'none';
+                }
+            });
         });
-    </script>
+    </script> -->
 </body>
 </html>

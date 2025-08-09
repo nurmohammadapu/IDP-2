@@ -1,73 +1,81 @@
-const { getConnection } = require("../db")
+const { getDB } = require("../db")
 
+// Create a new test record
 function createTest(testData) {
+  const db = getDB()
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
     const { name, category, price, description } = testData
 
-    connection.query(
-      "INSERT INTO tests (name, category, price, description) VALUES (?, ?, ?, ?)",
-      [name, category, price, description || ""],
-      (err, result) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(result.insertId)
-      },
-    )
+    const sql = `
+      INSERT INTO tests (name, category, price, description, created_at, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `
+    db.run(sql, [name, category, price, description || ""], function (err) {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve(this.lastID) // last inserted row id
+    })
   })
 }
 
+// Get all tests sorted by category and name
 function getAllTests() {
+  const db = getDB()
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
-    connection.query("SELECT * FROM tests ORDER BY category, name", (err, results) => {
+    const sql = "SELECT * FROM tests ORDER BY category, name"
+    db.all(sql, [], (err, rows) => {
       if (err) {
         reject(err)
         return
       }
-      resolve(results)
+      resolve(rows)
     })
   })
 }
 
+// Retrieve a single test by its ID
 function getTestById(id) {
+  const db = getDB()
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
-    connection.query("SELECT * FROM tests WHERE id = ?", [id], (err, results) => {
+    const sql = "SELECT * FROM tests WHERE id = ?"
+    db.get(sql, [id], (err, row) => {
       if (err) {
         reject(err)
         return
       }
-      resolve(results[0])
+      resolve(row)
     })
   })
 }
 
+// Update test details by ID
 function updateTest(id, testData) {
+  const db = getDB()
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
     const { name, category, price, description } = testData
 
-    connection.query(
-      "UPDATE tests SET name = ?, category = ?, price = ?, description = ? WHERE id = ?",
-      [name, category, price, description, id],
-      (err) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(true)
-      },
-    )
+    const sql = `
+      UPDATE tests SET name = ?, category = ?, price = ?, description = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `
+    db.run(sql, [name, category, price, description, id], function (err) {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve(true)
+    })
   })
 }
 
+// Delete a test by its ID
 function deleteTest(id) {
+  const db = getDB()
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
-    connection.query("DELETE FROM tests WHERE id = ?", [id], (err) => {
+    const sql = "DELETE FROM tests WHERE id = ?"
+    db.run(sql, [id], function (err) {
       if (err) {
         reject(err)
         return

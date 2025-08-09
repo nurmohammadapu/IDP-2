@@ -75,12 +75,12 @@
                     <div class="financial-grid">
                         <div class="financial-card">
                             <h3>Total Revenue</h3>
-                            <div class="amount" id="totalRevenue">$0.00</div>
+                            <div class="amount" id="totalRevenue">Tk-0.00</div>
                         </div>
                         
                         <div class="financial-card">
                             <h3>Pending Payments</h3>
-                            <div class="amount pending" id="pendingPayments">$0.00</div>
+                            <div class="amount pending" id="pendingPayments">Tk-0.00</div>
                         </div>
                     </div>
                 </div>
@@ -158,8 +158,8 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    document.getElementById('totalRevenue').textContent = `$${parseFloat(data.totalRevenue || 0).toFixed(2)}`;
-                    document.getElementById('pendingPayments').textContent = `$${parseFloat(data.pendingPayments || 0).toFixed(2)}`;
+                    document.getElementById('totalRevenue').textContent = `Tk-${parseFloat(data.totalRevenue || 0).toFixed(2)}`;
+                    document.getElementById('pendingPayments').textContent = `Tk-${parseFloat(data.pendingPayments || 0).toFixed(2)}`;
                     
                     // Load daily revenue table
                     const revenueTableBody = document.querySelector('#revenueTable tbody');
@@ -172,7 +172,7 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${formatDate(item.date)}</td>
-                                <td>$${parseFloat(item.revenue).toFixed(2)}</td>
+                                <td>Tk-${parseFloat(item.revenue).toFixed(2)}</td>
                             `;
                             revenueTableBody.appendChild(row);
                         });
@@ -193,7 +193,7 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${monthName} ${item.year}</td>
-                                <td>$${parseFloat(item.revenue).toFixed(2)}</td>
+                                <td>Tk-${parseFloat(item.revenue).toFixed(2)}</td>
                             `;
                             monthlyTableBody.appendChild(row);
                         });

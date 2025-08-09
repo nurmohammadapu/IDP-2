@@ -1,13 +1,14 @@
-const { getConnection } = require("../db")
+const { getDB } = require("../db")
 
-// Audit logging middleware
+// Audit logging middleware (SQLite)
 function logAuditActivity(userId, action, tableName, recordId, oldValues = null, newValues = null, ipAddress = null) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const db = getDB()
 
-    connection.query(
-      `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+    db.run(
+      `INSERT INTO audit_logs 
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [
         userId,
         action,
@@ -17,19 +18,19 @@ function logAuditActivity(userId, action, tableName, recordId, oldValues = null,
         newValues ? JSON.stringify(newValues) : null,
         ipAddress,
       ],
-      (err, result) => {
+      function (err) {
         if (err) {
           console.error("Audit log error:", err)
           reject(err)
         } else {
-          resolve(result.insertId)
+          resolve(this.lastID) // SQLite uses lastID instead of insertId
         }
-      },
+      }
     )
   })
 }
 
-// Get user ID from session
+// Get user ID from session (SQLite)
 async function getUserFromSession(req) {
   return new Promise((resolve) => {
     const sessionId = req.cookies?.sessionId
@@ -38,17 +39,17 @@ async function getUserFromSession(req) {
       return
     }
 
-    const connection = getConnection()
-    connection.query(
-      "SELECT user_id FROM sessions WHERE id = ? AND expires_at > NOW()",
+    const db = getDB()
+    db.get(
+      "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')",
       [sessionId],
-      (err, results) => {
-        if (err || results.length === 0) {
+      (err, row) => {
+        if (err || !row) {
           resolve(null)
         } else {
-          resolve(results[0].user_id)
+          resolve(row.user_id)
         }
-      },
+      }
     )
   })
 }

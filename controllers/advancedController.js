@@ -4,31 +4,52 @@ const { getAllPatients } = require("../models/patientModel")
 const { getAllDoctors } = require("../models/doctorModel")
 const { getAllAppointments } = require("../models/appointmentModel")
 const { getAllAdvancedBills } = require("../models/billingModel")
-const { getConnection } = require("../db")
+const { getDB } = require("../db")
+
+// promisify helpers
+function dbAll(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err)
+      else resolve(rows)
+    })
+  })
+}
+
+function dbGet(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err)
+      else resolve(row)
+    })
+  })
+}
+
+function dbRun(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err)
+      else resolve(this) // this.lastID, this.changes
+    })
+  })
+}
 
 // Real Notification System
 async function getNotifications(req, res) {
   try {
-    const connection = getConnection()
+    const db = getDB()
 
-    connection.query(
+    const results = await dbAll(
+      db,
       `SELECT n.*, u.name as user_name 
        FROM notifications n 
        LEFT JOIN users u ON n.user_id = u.id 
        ORDER BY n.created_at DESC 
-       LIMIT 20`,
-      (err, results) => {
-        if (err) {
-          console.error("Get notifications error:", err)
-          res.writeHead(500, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Internal server error" }))
-          return
-        }
-
-        res.writeHead(200, { "Content-Type": "application/json" })
-        res.end(JSON.stringify(results))
-      },
+       LIMIT 20`
     )
+
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(results))
   } catch (error) {
     console.error("Get notifications error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
@@ -38,22 +59,15 @@ async function getNotifications(req, res) {
 
 async function markNotificationRead(req, res, id) {
   try {
-    const connection = getConnection()
+    const db = getDB()
 
-    connection.query("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], (err) => {
-      if (err) {
-        console.error("Mark notification read error:", err)
-        res.writeHead(500, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Internal server error" }))
-        return
-      }
+    await dbRun(db, "UPDATE notifications SET is_read = 1 WHERE id = ?", [id])
 
-      // Log audit activity
-      auditAction(req, "UPDATE", "notifications", id, null, { is_read: true })
+    // Log audit activity
+    auditAction(req, "UPDATE", "notifications", id, null, { is_read: true })
 
-      res.writeHead(200, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ message: "Notification marked as read" }))
-    })
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify({ message: "Notification marked as read" }))
   } catch (error) {
     console.error("Mark notification read error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
@@ -64,7 +78,7 @@ async function markNotificationRead(req, res, id) {
 // Real Audit Trail with proper filtering
 async function getAuditTrail(req, res) {
   try {
-    const connection = getConnection()
+    const db = getDB()
     const { date_from, date_to, action, user_id } = req.query || {}
 
     let query = `
@@ -76,12 +90,12 @@ async function getAuditTrail(req, res) {
     const params = []
 
     if (date_from) {
-      query += " AND DATE(a.created_at) >= ?"
+      query += " AND date(a.created_at) >= ?"
       params.push(date_from)
     }
 
     if (date_to) {
-      query += " AND DATE(a.created_at) <= ?"
+      query += " AND date(a.created_at) <= ?"
       params.push(date_to)
     }
 
@@ -97,24 +111,17 @@ async function getAuditTrail(req, res) {
 
     query += " ORDER BY a.created_at DESC LIMIT 100"
 
-    connection.query(query, params, (err, results) => {
-      if (err) {
-        console.error("Get audit trail error:", err)
-        res.writeHead(500, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Internal server error" }))
-        return
-      }
+    const results = await dbAll(db, query, params)
 
-      // Parse JSON fields
-      const processedResults = results.map((log) => ({
-        ...log,
-        old_values: log.old_values ? JSON.parse(log.old_values) : null,
-        new_values: log.new_values ? JSON.parse(log.new_values) : null,
-      }))
+    // Parse JSON fields safely
+    const processedResults = results.map((log) => ({
+      ...log,
+      old_values: log.old_values ? JSON.parse(log.old_values) : null,
+      new_values: log.new_values ? JSON.parse(log.new_values) : null,
+    }))
 
-      res.writeHead(200, { "Content-Type": "application/json" })
-      res.end(JSON.stringify(processedResults))
-    })
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(processedResults))
   } catch (error) {
     console.error("Get audit trail error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
@@ -125,48 +132,28 @@ async function getAuditTrail(req, res) {
 // System Statistics
 async function getSystemStats(req, res) {
   try {
-    const connection = getConnection()
+    const db = getDB()
 
-    const queries = [
-      // Active users today
-      new Promise((resolve, reject) => {
-        connection.query(
-          "SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE DATE(created_at) = CURDATE()",
-          (err, results) => {
-            if (err) reject(err)
-            else resolve(results[0].count)
-          },
-        )
-      }),
-      // Total database size (approximate)
-      new Promise((resolve, reject) => {
-        connection.query(
-          `SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb 
-           FROM information_schema.tables 
-           WHERE table_schema = 'hospital_management'`,
-          (err, results) => {
-            if (err) reject(err)
-            else resolve(results[0].size_mb || 0)
-          },
-        )
-      }),
-      // Recent activities count
-      new Promise((resolve, reject) => {
-        connection.query(
-          "SELECT COUNT(*) as count FROM audit_logs WHERE DATE(created_at) = CURDATE()",
-          (err, results) => {
-            if (err) reject(err)
-            else resolve(results[0].count)
-          },
-        )
-      }),
-      // System uptime (mock)
-      new Promise((resolve) => {
-        resolve((99.5 + Math.random() * 0.4).toFixed(1))
-      }),
-    ]
+    // Active users today
+    const activeUsersRow = await dbGet(
+      db,
+      "SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE date(created_at) = date('now','localtime')"
+    )
+    const activeUsers = activeUsersRow ? activeUsersRow.count : 0
 
-    const [activeUsers, dbSize, todayActivities, uptime] = await Promise.all(queries)
+    // Database size: SQLite doesn't have information_schema, so approximate by file size or 0
+    // Here we simply return 0 or "N/A" since it requires fs.stat on DB file outside DB connection
+    const dbSize = "N/A"
+
+    // Recent activities count today
+    const todayActivitiesRow = await dbGet(
+      db,
+      "SELECT COUNT(*) as count FROM audit_logs WHERE date(created_at) = date('now','localtime')"
+    )
+    const todayActivities = todayActivitiesRow ? todayActivitiesRow.count : 0
+
+    // System uptime (mock)
+    const uptime = (99.5 + Math.random() * 0.4).toFixed(1)
 
     const stats = {
       activeUsers,
@@ -188,10 +175,10 @@ async function getSystemStats(req, res) {
 // Real Backup System
 async function createSystemBackup(req, res) {
   try {
-    const connection = getConnection()
+    const db = getDB()
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
 
-    // Get all table data
+    // Tables list remains the same
     const tables = [
       "users",
       "patients",
@@ -212,38 +199,35 @@ async function createSystemBackup(req, res) {
       tables: {},
     }
 
-    let completed = 0
-
-    tables.forEach((table) => {
-      connection.query(`SELECT * FROM ${table}`, (err, results) => {
-        if (err) {
-          console.error(`Error backing up ${table}:`, err)
-          backupData.tables[table] = []
-        } else {
-          backupData.tables[table] = results
-        }
-
-        completed++
-        if (completed === tables.length) {
-          // Log audit activity
-          auditAction(req, "BACKUP_CREATED", "system", null, null, {
-            tables_count: tables.length,
-            timestamp,
-          })
-
-          const result = {
-            message: "Backup created successfully",
-            filename: `backup_${timestamp}.json`,
-            size: JSON.stringify(backupData).length,
-            timestamp: new Date().toISOString(),
-            tables_backed_up: tables.length,
-          }
-
-          res.writeHead(200, { "Content-Type": "application/json" })
-          res.end(JSON.stringify(result))
-        }
-      })
+    // SQLite queries are async, so use Promise.all with map
+    const tablePromises = tables.map(async (table) => {
+      try {
+        const rows = await dbAll(db, `SELECT * FROM ${table}`)
+        backupData.tables[table] = rows
+      } catch (err) {
+        console.error(`Error backing up ${table}:`, err)
+        backupData.tables[table] = []
+      }
     })
+
+    await Promise.all(tablePromises)
+
+    // Log audit activity
+    auditAction(req, "BACKUP_CREATED", "system", null, null, {
+      tables_count: tables.length,
+      timestamp,
+    })
+
+    const result = {
+      message: "Backup created successfully",
+      filename: `backup_${timestamp}.json`,
+      size: JSON.stringify(backupData).length,
+      timestamp: new Date().toISOString(),
+      tables_backed_up: tables.length,
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(result))
   } catch (error) {
     console.error("Create backup error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
@@ -330,65 +314,41 @@ async function advancedSearch(req, res) {
       return
     }
 
-    const connection = getConnection()
+    const db = getDB()
     const searchTerm = `%${query.toLowerCase()}%`
 
     switch (type) {
       case "patients":
-        await new Promise((resolve, reject) => {
-          connection.query(
-            `SELECT * FROM patients 
-             WHERE LOWER(name) LIKE ? OR contact LIKE ? OR LOWER(address) LIKE ?
-             ORDER BY name LIMIT 50`,
-            [searchTerm, searchTerm, searchTerm],
-            (err, data) => {
-              if (err) reject(err)
-              else {
-                results = data
-                resolve()
-              }
-            },
-          )
-        })
+        results = await dbAll(
+          db,
+          `SELECT * FROM patients 
+           WHERE LOWER(name) LIKE ? OR contact LIKE ? OR LOWER(address) LIKE ?
+           ORDER BY name LIMIT 50`,
+          [searchTerm, searchTerm, searchTerm]
+        )
         break
 
       case "doctors":
-        await new Promise((resolve, reject) => {
-          connection.query(
-            `SELECT * FROM doctors 
-             WHERE LOWER(name) LIKE ? OR LOWER(specialty) LIKE ?
-             ORDER BY name LIMIT 50`,
-            [searchTerm, searchTerm],
-            (err, data) => {
-              if (err) reject(err)
-              else {
-                results = data
-                resolve()
-              }
-            },
-          )
-        })
+        results = await dbAll(
+          db,
+          `SELECT * FROM doctors 
+           WHERE LOWER(name) LIKE ? OR LOWER(specialty) LIKE ?
+           ORDER BY name LIMIT 50`,
+          [searchTerm, searchTerm]
+        )
         break
 
       case "appointments":
-        await new Promise((resolve, reject) => {
-          connection.query(
-            `SELECT a.*, p.name as patient_name, d.name as doctor_name 
-             FROM appointments a
-             JOIN patients p ON a.patient_id = p.id
-             JOIN doctors d ON a.doctor_id = d.id
-             WHERE LOWER(p.name) LIKE ? OR LOWER(d.name) LIKE ?
-             ORDER BY a.appointment_date DESC LIMIT 50`,
-            [searchTerm, searchTerm],
-            (err, data) => {
-              if (err) reject(err)
-              else {
-                results = data
-                resolve()
-              }
-            },
-          )
-        })
+        results = await dbAll(
+          db,
+          `SELECT a.*, p.name as patient_name, d.name as doctor_name 
+           FROM appointments a
+           JOIN patients p ON a.patient_id = p.id
+           JOIN doctors d ON a.doctor_id = d.id
+           WHERE LOWER(p.name) LIKE ? OR LOWER(d.name) LIKE ?
+           ORDER BY a.appointment_date DESC LIMIT 50`,
+          [searchTerm, searchTerm]
+        )
         break
 
       default:

@@ -1,8 +1,9 @@
-const { getConnection } = require("../db")
+const { getDB } = require("../db")
 
+// Create a new advanced bill record with items and initial payment
 function createAdvancedBill(billData) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     const {
       patient_id,
       billing_date,
@@ -15,7 +16,7 @@ function createAdvancedBill(billData) {
       payment_method,
     } = billData
 
-    // Calculate discount amount
+    // Calculate discount amount based on discount type
     let discount_amount = 0
     if (discount_type === "percentage") {
       discount_amount = (subtotal * discount_value) / 100
@@ -26,6 +27,7 @@ function createAdvancedBill(billData) {
     const final_total = subtotal - discount_amount
     const due_amount = final_total - (paid_amount || 0)
 
+    // Insert the main bill record
     connection.query(
       `INSERT INTO advanced_bills (
         patient_id, billing_date, subtotal, discount_type, discount_value, 
@@ -51,7 +53,7 @@ function createAdvancedBill(billData) {
 
         const billId = result.insertId
 
-        // Insert bill items
+        // Insert bill items if any
         if (items && items.length > 0) {
           const itemValues = items.map((item) => [
             billId,
@@ -70,7 +72,7 @@ function createAdvancedBill(billData) {
                 return
               }
 
-              // Add initial payment if any
+              // Insert initial payment if paid_amount > 0
               if (paid_amount > 0) {
                 connection.query(
                   "INSERT INTO bill_payments (bill_id, amount, payment_method, payment_date) VALUES (?, ?, ?, ?)",
@@ -96,9 +98,10 @@ function createAdvancedBill(billData) {
   })
 }
 
+// Retrieve all advanced bills with patient info, ordered by billing date descending
 function getAllAdvancedBills() {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     connection.query(
       `SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
        FROM advanced_bills ab 
@@ -115,9 +118,10 @@ function getAllAdvancedBills() {
   })
 }
 
+// Get detailed advanced bill by ID including items and payment history
 function getAdvancedBillById(id) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     connection.query(
       `SELECT ab.*, p.name as patient_name, p.contact as patient_contact, p.address as patient_address
        FROM advanced_bills ab 
@@ -137,14 +141,14 @@ function getAdvancedBillById(id) {
 
         const bill = results[0]
 
-        // Get bill items
+        // Get bill items related to this bill
         connection.query("SELECT * FROM bill_items WHERE bill_id = ?", [id], (err, items) => {
           if (err) {
             reject(err)
             return
           }
 
-          // Get payment history
+          // Get payment history for this bill
           connection.query(
             "SELECT * FROM bill_payments WHERE bill_id = ? ORDER BY payment_date DESC",
             [id],
@@ -165,9 +169,10 @@ function getAdvancedBillById(id) {
   })
 }
 
+// Update an existing advanced bill with new data and items
 function updateAdvancedBill(id, billData) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     const { patient_id, billing_date, items, subtotal, discount_type, discount_value, paid_amount, payment_method } =
       billData
 
@@ -207,13 +212,14 @@ function updateAdvancedBill(id, billData) {
           return
         }
 
-        // Delete existing items and insert new ones
+        // Remove old bill items
         connection.query("DELETE FROM bill_items WHERE bill_id = ?", [id], (err) => {
           if (err) {
             reject(err)
             return
           }
 
+          // Insert updated bill items
           if (items && items.length > 0) {
             const itemValues = items.map((item) => [
               id,
@@ -243,12 +249,13 @@ function updateAdvancedBill(id, billData) {
   })
 }
 
+// Add a payment to an existing bill and update paid/due amounts accordingly
 function addPayment(billId, paymentData) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     const { amount, payment_method, notes } = paymentData
 
-    // First, add the payment record
+    // Insert payment record
     connection.query(
       "INSERT INTO bill_payments (bill_id, amount, payment_method, notes, payment_date) VALUES (?, ?, ?, ?, ?)",
       [billId, amount, payment_method, notes || "", new Date()],
@@ -258,7 +265,7 @@ function addPayment(billId, paymentData) {
           return
         }
 
-        // Update the bill's paid amount and due amount
+        // Update paid and due amounts in the bill
         connection.query(
           `UPDATE advanced_bills SET 
             paid_amount = paid_amount + ?, 
@@ -278,10 +285,12 @@ function addPayment(billId, paymentData) {
   })
 }
 
-// Legacy functions for backward compatibility
+// Legacy functions to handle old billing system compatibility
+
+// Create a simple bill record (legacy)
 function createBill(billingData) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     const { patient_id, amount, service_details, billing_date } = billingData
 
     connection.query(
@@ -298,9 +307,10 @@ function createBill(billingData) {
   })
 }
 
+// Get all legacy bills with patient info
 function getAllBills() {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     connection.query(
       `SELECT b.*, p.name as patient_name, p.contact as patient_contact 
        FROM billing b 
@@ -317,9 +327,10 @@ function getAllBills() {
   })
 }
 
+// Update status of a legacy bill
 function updateBillStatus(id, status) {
   return new Promise((resolve, reject) => {
-    const connection = getConnection()
+    const connection = getDB()
     connection.query("UPDATE billing SET status = ? WHERE id = ?", [status, id], (err) => {
       if (err) {
         reject(err)

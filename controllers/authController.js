@@ -1,12 +1,15 @@
-const { createUser, findUserByEmail, findUserById, verifyPassword } = require("../models/userModel")
+const {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  verifyPassword,
+} = require("../models/userModel")
 const crypto = require("crypto")
-const { getConnection } = require("../db")
+const { getDB } = require("../db") 
 
 async function register(req, res) {
   try {
     const { name, email, password, role } = req.body
-
-    console.log("Registration attempt:", { name, email, role })
 
     if (!name || !email || !password || !role) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -14,7 +17,6 @@ async function register(req, res) {
       return
     }
 
-    // Validate role
     const validRoles = ["admin", "doctor", "receptionist", "patient"]
     if (!validRoles.includes(role)) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -22,7 +24,6 @@ async function register(req, res) {
       return
     }
 
-    // Check if user already exists
     const existingUser = await findUserByEmail(email)
     if (existingUser) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -30,10 +31,7 @@ async function register(req, res) {
       return
     }
 
-    // Create user
     const userId = await createUser({ name, email, password, role })
-
-    console.log("User created successfully:", userId)
 
     res.writeHead(201, { "Content-Type": "application/json" })
     res.end(
@@ -74,36 +72,30 @@ async function login(req, res) {
       return
     }
 
-    // Create session
+    // Create session in SQLite
     const sessionId = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours, ISO string
 
-    const connection = getConnection()
+    const db = getDB()
 
-    connection.query(
-      "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
-      [sessionId, user.id, expiresAt],
-      (err) => {
-        if (err) {
-          console.error("Session creation error:", err)
-          res.writeHead(500, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Internal server error" }))
-          return
-        }
+    await new Promise((resolve, reject) => {
+      const sql = "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
+      db.run(sql, [sessionId, user.id, expiresAt], function (err) {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
 
-        // Set cookie
-        res.writeHead(200, {
-          "Content-Type": "application/json",
-          "Set-Cookie": `sessionId=${sessionId}; HttpOnly; Path=/; Max-Age=86400`,
-        })
-
-        res.end(
-          JSON.stringify({
-            message: "Login successful",
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
-          }),
-        )
-      },
+    // Set cookie and respond
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Set-Cookie": `sessionId=${sessionId}; HttpOnly; Path=/; Max-Age=86400`,
+    })
+    res.end(
+      JSON.stringify({
+        message: "Login successful",
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      }),
     )
   } catch (error) {
     console.error("Login error:", error)
@@ -117,11 +109,12 @@ async function logout(req, res) {
     const sessionId = req.cookies.sessionId
 
     if (sessionId) {
-      const connection = getConnection()
-      connection.query("DELETE FROM sessions WHERE id = ?", [sessionId], (err) => {
-        if (err) {
-          console.error("Logout error:", err)
-        }
+      const db = getDB()
+      await new Promise((resolve, reject) => {
+        db.run("DELETE FROM sessions WHERE id = ?", [sessionId], function (err) {
+          if (err) reject(err)
+          else resolve()
+        })
       })
     }
 
@@ -147,11 +140,12 @@ async function getCurrentUser(req, res) {
       return
     }
 
-    const connection = getConnection()
-    connection.query(
-      "SELECT * FROM sessions WHERE id = ? AND expires_at > NOW()",
+    const db = getDB()
+
+    db.get(
+      "SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')",
       [sessionId],
-      async (err, sessions) => {
+      async (err, session) => {
         if (err) {
           console.error("Session check error:", err)
           res.writeHead(500, { "Content-Type": "application/json" })
@@ -159,15 +153,15 @@ async function getCurrentUser(req, res) {
           return
         }
 
-        if (sessions.length === 0) {
+        if (!session) {
           res.writeHead(401, { "Content-Type": "application/json" })
           res.end(JSON.stringify({ error: "Session expired" }))
           return
         }
 
         try {
-          const user = await findUserById(sessions[0].user_id)
-          delete user.password
+          const user = await findUserById(session.user_id)
+          if (user) delete user.password
 
           res.writeHead(200, { "Content-Type": "application/json" })
           res.end(JSON.stringify({ user }))

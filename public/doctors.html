@@ -26,12 +26,14 @@
         </nav>
 
         <main class="main-content">
-            <header class="main-header">
-                <h1>Doctor Management</h1>
-                <div class="header-actions">
-                    <button id="addDoctorBtn" class="btn btn-primary">Add Doctor</button>
-                </div>
-            </header>
+        <header class="main-header">
+            <h1>Doctor Management</h1>
+            <div class="header-actions">
+                <input type="text" id="searchDoctors" placeholder="Search doctors..." style="padding: 6px 10px; font-size: 14px; margin-right: 10px;">
+                <button id="addDoctorBtn" class="btn btn-primary">Add Doctor</button>
+            </div>
+        </header>
+
 
             <div class="content-section">
                 <div class="table-container">
@@ -98,52 +100,98 @@
 
     <script src="scripts.js"></script>
     <script>
-        let currentDoctorId = null;
-        let doctors = [];
+ let currentDoctorId = null;
+    let doctors = [];
 
-        // Load doctors
-        async function loadDoctors() {
-            try {
-                const response = await fetch('/api/doctors');
-                const data = await response.json();
-                
-                if (response.ok) {
-                    doctors = data;
-                    displayDoctors(doctors);
-                } else {
-                    showToast('Failed to load doctors', 'error');
-                }
-            } catch (error) {
-                showToast('Network error loading doctors', 'error');
+    async function loadDoctors() {
+        try {
+            const response = await fetch('/api/doctors');
+            const data = await response.json();
+
+            if (response.ok) {
+                doctors = data;
+                displayDoctors(doctors);
+            } else {
+                showToast('Failed to load doctors', 'error');
             }
+        } catch (error) {
+            showToast('Network error loading doctors', 'error');
+        }
+    }
+
+    function displayDoctors(doctorsData) {
+        const tbody = document.querySelector('#doctorsTable tbody');
+        tbody.innerHTML = '';
+
+        if (doctorsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No doctors found</td></tr>';
+            return;
         }
 
-        // Display doctors in table
-        function displayDoctors(doctorsData) {
-            const tbody = document.querySelector('#doctorsTable tbody');
-            tbody.innerHTML = '';
-            
-            if (doctorsData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No doctors found</td></tr>';
-                return;
+        doctorsData.forEach(doctor => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${doctor.id}</td>
+                <td>${doctor.name}</td>
+                <td>${doctor.specialty}</td>
+                <td>${doctor.contact}</td>
+                <td>${doctor.schedule || 'Not specified'}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="editDoctor(${doctor.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDoctor(${doctor.id})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAuthAndLoadUser();
+        loadDoctors();
+
+ 
+        document.getElementById('addDoctorBtn').addEventListener('click', addDoctor);
+
+        // Search input event to filter doctors list
+        document.getElementById('searchDoctors').addEventListener('input', function () {
+            const searchTerm = this.value.toLowerCase();
+
+            const filteredDoctors = doctors.filter(doc =>
+                doc.name.toLowerCase().includes(searchTerm) ||
+                (doc.specialty && doc.specialty.toLowerCase().includes(searchTerm)) ||
+                (doc.contact && doc.contact.toLowerCase().includes(searchTerm)) ||
+                (doc.schedule && doc.schedule.toLowerCase().includes(searchTerm))
+            );
+
+            displayDoctors(filteredDoctors);
+        });
+
+        // Modal close
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('doctorModal').style.display = 'none';
+        });
+
+        // Cancel button
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('doctorModal').style.display = 'none';
+        });
+
+        // Form submit
+        document.getElementById('doctorForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const doctorData = Object.fromEntries(formData);
+            saveDoctor(doctorData);
+        });
+
+        // Close modal on clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('doctorModal')) {
+                document.getElementById('doctorModal').style.display = 'none';
             }
-            
-            doctorsData.forEach(doctor => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${doctor.id}</td>
-                    <td>${doctor.name}</td>
-                    <td>${doctor.specialty}</td>
-                    <td>${doctor.contact}</td>
-                    <td>${doctor.schedule || 'Not specified'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" onclick="editDoctor(${doctor.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteDoctor(${doctor.id})">Delete</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+        });
+    });
 
         // Add doctor
         function addDoctor() {
@@ -217,39 +265,6 @@
             }
         }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            checkAuthAndLoadUser();
-            loadDoctors();
-            
-            // Add doctor button
-            document.getElementById('addDoctorBtn').addEventListener('click', addDoctor);
-            
-            // Modal close
-            document.querySelector('.close').addEventListener('click', () => {
-                document.getElementById('doctorModal').style.display = 'none';
-            });
-            
-            // Cancel button
-            document.getElementById('cancelBtn').addEventListener('click', () => {
-                document.getElementById('doctorModal').style.display = 'none';
-            });
-            
-            // Form submit
-            document.getElementById('doctorForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const doctorData = Object.fromEntries(formData);
-                saveDoctor(doctorData);
-            });
-            
-            // Close modal when clicking outside
-            window.addEventListener('click', (e) => {
-                if (e.target === document.getElementById('doctorModal')) {
-                    document.getElementById('doctorModal').style.display = 'none';
-                }
-            });
-        });
     </script>
 </body>
 </html>

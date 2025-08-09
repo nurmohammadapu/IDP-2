@@ -138,6 +138,41 @@
             border-radius: 3px;
             border: 1px solid #ddd;
         }
+
+        .search-container {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .clear-search {
+            padding: 0.75rem 1rem;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .clear-search:hover {
+            background: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -160,7 +195,7 @@
                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
             </div>
         </nav>
-
+        
         <main class="main-content">
             <header class="main-header">
                 <h1>Advanced Billing Management</h1>
@@ -168,8 +203,13 @@
                     <button id="addBillBtn" class="btn btn-primary">Create New Bill</button>
                 </div>
             </header>
-
+            
             <div class="content-section">
+                <div class="search-container">
+                    <input type="text" id="billSearchInput" class="search-input" placeholder="Search bills by Bill ID, Patient Name, or Contact...">
+                    <button id="clearSearchBtn" class="clear-search">Clear</button>
+                </div>
+                
                 <div class="table-container">
                     <table id="billingTable">
                         <thead>
@@ -195,7 +235,7 @@
         </main>
     </div>
 
-    <!-- Bill View Modal -->
+     Bill View Modal 
     <div id="billViewModal" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header">
@@ -213,119 +253,118 @@
         </div>
     </div>
 
-    <!-- Enhanced Billing Modal -->
-    <div id="billingModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="modalTitle">Create New Bill</h2>
-                <span class="close">&times;</span>
-            </div>
-            <form id="billingForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="billPatient">Patient *</label>
-                        <select id="billPatient" name="patient_id" required>
-                            <option value="">Select Patient</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="billDate">Date *</label>
-                        <input type="date" id="billDate" name="billing_date" required>
-                    </div>
-                </div>
-
-                <!-- Test Selection -->
-                <div class="form-group">
-                    <label>Select Tests</label>
-                    <div class="test-selector" id="testSelector">
-                        <div class="loading">Loading tests...</div>
-                    </div>
-                </div>
-
-                <!-- Manual Items -->
-                <div class="form-group">
-                    <label>Manual Items</label>
-                    <div class="form-row">
-                        <input type="text" id="manualItemName" placeholder="Item name (e.g., Doctor Visit)">
-                        <input type="number" id="manualItemPrice" placeholder="Price" min="0" step="0.01">
-                        <button type="button" id="addManualItemBtn" class="btn btn-secondary">Add Item</button>
-                    </div>
-                </div>
-
-                <!-- Selected Items -->
-                <div class="bill-items" id="selectedItems">
-                    <h4>Selected Items</h4>
-                    <div id="itemsList">
-                        <div class="no-data">No items selected</div>
-                    </div>
-                </div>
-
-                <!-- Discount -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="discountType">Discount Type</label>
-                        <select id="discountType">
-                            <option value="amount">Fixed Amount (৳)</option>
-                            <option value="percentage">Percentage (%)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="discountValue">Discount Value</label>
-                        <input type="number" id="discountValue" min="0" step="0.01" value="0">
-                    </div>
-                </div>
-
-                <!-- Payment -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="paidAmount">Paid Amount (৳)</label>
-                        <input type="number" id="paidAmount" name="paid_amount" min="0" step="0.01" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="paymentMethod">Payment Method</label>
-                        <select id="paymentMethod" name="payment_method">
-                            <option value="cash">Cash</option>
-                            <option value="card">Card</option>
-                            <option value="mobile_banking">Mobile Banking</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Bill Summary -->
-                <div class="bill-summary" id="billSummary">
-                    <h4>Bill Summary</h4>
-                    <div class="summary-row">
-                        <span>Subtotal:</span>
-                        <span id="subtotalAmount">৳0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Discount:</span>
-                        <span id="discountAmount">৳0.00</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>Total Amount:</span>
-                        <span id="totalAmount">৳0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Paid Amount:</span>
-                        <span id="paidAmountDisplay">৳0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Due Amount:</span>
-                        <span id="dueAmount">৳0.00</span>
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Bill</button>
-                </div>
-            </form>
+     Enhanced Billing Modal 
+<div id="billingModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="modalTitle">Create New Bill</h2>
+            <span class="close">&times;</span>
         </div>
-    </div>
+        <form id="billingForm">
+            <div class="form-row">
+                <div class="form-group" style="position: relative;">
+                    <label for="billPatientSearch">Patient *</label>
+                    <input type="text" id="billPatientSearch" placeholder="Search patient by name or contact" autocomplete="off" required />
+                    <div id="patientDropdown" class="dropdown-list"></div>
+                    <input type="hidden" id="billPatient" name="patient_id" required />
+                </div>
+                <div class="form-group">
+                    <label for="billDate">Date *</label>
+                    <input type="date" id="billDate" name="billing_date" required>
+                </div>
+            </div>
 
-    <!-- Payment Modal -->
+             Test Selection 
+<div class="form-group">
+    <label for="testSearch">Select Tests</label>
+    <input type="text" id="testSearch" placeholder="Search tests by name" autocomplete="off" />
+    <div id="testDropdown" class="dropdown-list"></div>
+</div>
+
+             Manual Items 
+            <div class="form-group">
+                <label>Manual Items</label>
+                <div class="form-row">
+                    <input type="text" id="manualItemName" placeholder="Item name (e.g., Doctor Visit)">
+                    <input type="number" id="manualItemPrice" placeholder="Price" min="0" step="0.01">
+                    <button type="button" id="addManualItemBtn" class="btn btn-secondary">Add Item</button>
+                </div>
+            </div>
+
+             Selected Items 
+            <div class="bill-items" id="selectedItems">
+                <h4>Selected Items</h4>
+                <div id="itemsList">
+                    <div class="no-data">No items selected</div>
+                </div>
+            </div>
+
+             Discount 
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="discountType">Discount Type</label>
+                    <select id="discountType">
+                        <option value="amount">Fixed Amount (৳)</option>
+                        <option value="percentage">Percentage (%)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="discountValue">Discount Value</label>
+                    <input type="number" id="discountValue" min="0" step="0.01" value="0">
+                </div>
+            </div>
+
+             Payment 
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="paidAmount">Paid Amount (৳)</label>
+                    <input type="number" id="paidAmount" name="paid_amount" min="0" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method</label>
+                    <select id="paymentMethod" name="payment_method">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="mobile_banking">Mobile Banking</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                    </select>
+                </div>
+            </div>
+
+             Bill Summary 
+            <div class="bill-summary" id="billSummary">
+                <h4>Bill Summary</h4>
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotalAmount">৳0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Discount:</span>
+                    <span id="discountAmount">৳0.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total Amount:</span>
+                    <span id="totalAmount">৳0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Paid Amount:</span>
+                    <span id="paidAmountDisplay">৳0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Due Amount:</span>
+                    <span id="dueAmount">৳0.00</span>
+                </div>
+            </div>
+                        
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+     Payment Modal 
     <div id="paymentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -334,12 +373,12 @@
             </div>
             <form id="paymentForm">
                 <input type="hidden" id="paymentBillId">
-                
+                                
                 <div class="form-group">
                     <label for="paymentAmount">Payment Amount (৳) *</label>
                     <input type="number" id="paymentAmount" name="amount" required min="0" step="0.01">
                 </div>
-                
+                                
                 <div class="form-group">
                     <label for="paymentMethodModal">Payment Method</label>
                     <select id="paymentMethodModal" name="payment_method">
@@ -349,12 +388,12 @@
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
-                
+                                
                 <div class="form-group">
                     <label for="paymentNotes">Notes</label>
                     <textarea id="paymentNotes" name="notes" rows="3"></textarea>
                 </div>
-                
+                                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelPaymentBtn">Cancel</button>
                     <button type="submit" class="btn btn-primary">Add Payment</button>
@@ -364,15 +403,180 @@
     </div>
 
     <div id="toast" class="toast"></div>
-
     <script src="scripts.js"></script>
     <script>
         let bills = [];
+        let filteredBills = []; 
         let patients = [];
         let tests = [];
         let selectedItems = [];
         let currentBillId = null;
         let currentUser = null;
+
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.className = `toast ${type}`;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB');
+}
+
+function checkAuthAndLoadUser() {
+    return Promise.resolve();
+}
+
+function searchBills(query) {
+    if (!query.trim()) {
+        filteredBills = [...bills];
+    } else {
+        const searchTerm = query.toLowerCase();
+        filteredBills = bills.filter(bill => {
+            const billId = `BILL-${String(bill.id).padStart(6, '0')}`.toLowerCase();
+            const patientName = bill.patient_name.toLowerCase();
+            const patientContact = (bill.patient_contact || '').toLowerCase();
+            
+            return billId.includes(searchTerm) || 
+                   patientName.includes(searchTerm) || 
+                   patientContact.includes(searchTerm);
+        });
+    }
+    displayBills(filteredBills);
+}
+
+const patientSearchInput = document.getElementById('billPatientSearch');
+const patientDropdown = document.getElementById('patientDropdown');
+const patientHiddenInput = document.getElementById('billPatient');
+
+patientSearchInput.addEventListener('input', function() {
+    const query = this.value.trim().toLowerCase();
+    if (query.length === 0) {
+        patientDropdown.innerHTML = '';
+        patientHiddenInput.value = '';          
+        return;
+    }
+
+    const matchedPatients = patients.filter(p => 
+        p.name.toLowerCase().includes(query) ||
+        (p.contact && p.contact.toLowerCase().includes(query))
+    );
+
+    if (matchedPatients.length === 0) {
+        patientDropdown.innerHTML = '<div class="no-data">No patients found</div>';
+        patientHiddenInput.value = '';
+        return;
+    }
+
+    patientDropdown.innerHTML = matchedPatients.map(p => `
+        <div class="dropdown-item" data-id="${p.id}" data-name="${p.name}">
+            ${p.name} (${p.contact || 'No contact'})
+        </div>
+    `).join('');
+
+    patientDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = item.getAttribute('data-id');
+            const name = item.getAttribute('data-name');
+            patientSearchInput.value = name;
+            patientHiddenInput.value = id;
+            patientDropdown.innerHTML = '';
+        });
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (!patientSearchInput.contains(e.target) && !patientDropdown.contains(e.target)) {
+        patientDropdown.innerHTML = '';
+    }
+});
+
+const testSearchInput = document.getElementById('testSearch');
+const testDropdown = document.getElementById('testDropdown');
+const selectedItemsDiv = document.getElementById('itemsList');
+
+function addTestToSelected(test) {
+    if (selectedItems.some(item => item.id === test.id)) {
+        showToast('Test already selected', 'error');
+        return;
+    }
+    selectedItems.push({ ...test, quantity: 1 });
+    renderSelectedItems();
+    calculateBillSummary();
+}
+
+function renderSelectedItems() {
+    if (selectedItems.length === 0) {
+        selectedItemsDiv.innerHTML = '<div class="no-data">No items selected</div>';
+        return;
+    }
+
+    selectedItemsDiv.innerHTML = '';
+    selectedItems.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'selected-item';
+        div.innerHTML = `
+            <span>${item.name} (৳${parseFloat(item.price).toFixed(2)})</span>
+            <button class="btn btn-sm btn-danger" onclick="removeSelectedItem(${index})">Remove</button>
+        `;
+        selectedItemsDiv.appendChild(div);
+    });
+}
+
+// Remove item
+function removeSelectedItem(index) {
+    selectedItems.splice(index, 1);
+    renderSelectedItems();
+    calculateBillSummary();
+}
+
+testSearchInput.addEventListener('input', function() {
+    const query = this.value.trim().toLowerCase();
+    if (query.length === 0) {
+        testDropdown.innerHTML = '';
+        return;
+    }
+
+    const matchedTests = tests.filter(test =>
+        test.name.toLowerCase().includes(query)
+    );
+
+    if (matchedTests.length === 0) {
+        testDropdown.innerHTML = '<div class="no-data">No tests found</div>';
+        return;
+    }
+
+    testDropdown.innerHTML = matchedTests.map(test => `
+        <div class="dropdown-item" data-id="${test.id}" data-name="${test.name}" data-price="${test.price}">
+            ${test.name} (৳${parseFloat(test.price).toFixed(2)})
+        </div>
+    `).join('');
+
+    testDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = parseInt(item.getAttribute('data-id'));
+            const name = item.getAttribute('data-name');
+            const price = parseFloat(item.getAttribute('data-price'));
+            addTestToSelected({ id, name, price });
+            testSearchInput.value = '';
+            testDropdown.innerHTML = '';
+        });
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (!testSearchInput.contains(e.target) && !testDropdown.contains(e.target)) {
+        testDropdown.innerHTML = '';
+    }
+});
 
         // Load all data
         async function loadAllData() {
@@ -387,16 +591,15 @@
         async function loadBills() {
             try {
                 const response = await fetch('/api/billing/advanced');
-                const data = await response.json();
-                
-                if (response.ok) {
-                    bills = data;
-                    displayBills(bills);
-                } else {
-                    showToast('Failed to load bills', 'error');
+                if (!response.ok) {
+                    throw new Error('Failed to load bills');
                 }
+                const data = await response.json();
+                bills = data;
+                filteredBills = [...bills]; 
+                displayBills(filteredBills);
             } catch (error) {
-                showToast('Network error loading bills', 'error');
+                console.error('Error loading bills:', error);
             }
         }
 
@@ -405,15 +608,15 @@
             try {
                 const response = await fetch('/api/patients');
                 const data = await response.json();
-                
+                                
                 if (response.ok) {
                     patients = data;
                     populatePatientDropdown();
                 } else {
-                    showToast('Failed to load patients', 'error');
+                    console.error('Failed to load patients'); 
                 }
             } catch (error) {
-                showToast('Network error loading patients', 'error');
+                console.error('Network error loading patients:', error);
             }
         }
 
@@ -422,32 +625,32 @@
             try {
                 const response = await fetch('/api/tests');
                 const data = await response.json();
-                
+                                
                 if (response.ok) {
                     tests = data;
                     populateTestSelector();
                 } else {
-                    showToast('Failed to load tests', 'error');
+                    console.error('Failed to load tests'); 
                 }
             } catch (error) {
-                showToast('Network error loading tests', 'error');
+                console.error('Network error loading tests:', error); 
             }
         }
 
-        // Display bills
+        // Display bills - updated for search
         function displayBills(billsData) {
             const tbody = document.querySelector('#billingTable tbody');
             tbody.innerHTML = '';
-            
+                        
             if (billsData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="no-data">No bills found</td></tr>';
                 return;
             }
-            
+                        
             billsData.forEach(bill => {
                 const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
                 const status = dueAmount <= 0 ? 'paid' : 'pending';
-                
+                                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>BILL-${String(bill.id).padStart(6, '0')}</td>
@@ -473,7 +676,7 @@
             try {
                 const response = await fetch(`/api/billing/advanced/${billId}`);
                 const bill = await response.json();
-                
+                                
                 if (response.ok) {
                     displayBillDetails(bill);
                     document.getElementById('editFromViewBtn').onclick = () => editBill(billId);
@@ -489,148 +692,155 @@
 
         // Display bill details in view modal
         function displayBillDetails(bill) {
-            const container = document.getElementById('billViewContainer');
-            const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
-            const status = dueAmount <= 0 ? 'PAID' : 'PENDING';
-            
-            container.innerHTML = `
-                <!-- Patient Information -->
-                <div class="bill-detail-section">
-                    <div class="bill-detail-title">Patient Information</div>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <div class="detail-label">Patient Name</div>
-                            <div class="detail-value">${bill.patient_name}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Contact</div>
-                            <div class="detail-value">${bill.patient_contact}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Address</div>
-                            <div class="detail-value">${bill.patient_address || 'N/A'}</div>
-                        </div>
+    const container = document.getElementById('billViewContainer');
+    const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
+    const status = dueAmount <= 0 ? 'PAID' : 'PENDING';
+                    
+    container.innerHTML = `
+        <!-- Patient Information -->
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Patient Information</div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Patient Name</div>
+                    <div class="detail-value">${bill.patient_name}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Contact</div>
+                    <div class="detail-value">${bill.patient_contact || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Address</div>
+                    <div class="detail-value">${bill.patient_address || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Information -->
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Bill Information</div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Bill ID</div>
+                    <div class="detail-value">BILL-${String(bill.id).padStart(6, '0')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Date</div>
+                    <div class="detail-value">${formatDate(bill.billing_date)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                        <span class="status status-${status.toLowerCase()}">${status}</span>
                     </div>
                 </div>
-
-                <!-- Bill Information -->
-                <div class="bill-detail-section">
-                    <div class="bill-detail-title">Bill Information</div>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <div class="detail-label">Bill ID</div>
-                            <div class="detail-value">BILL-${String(bill.id).padStart(6, '0')}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Date</div>
-                            <div class="detail-value">${formatDate(bill.billing_date)}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Status</div>
-                            <div class="detail-value">
-                                <span class="status status-${status.toLowerCase()}">${status}</span>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Payment Method</div>
-                            <div class="detail-value">${bill.payment_method || 'N/A'}</div>
-                        </div>
-                    </div>
+                <div class="detail-item">
+                    <div class="detail-label">Created By</div>
+                    <div class="detail-value">${bill.created_by || 'N/A'}</div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Items -->
-                <div class="bill-detail-section">
-                    <div class="bill-detail-title">Service Items</div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
+        <!-- Service Items -->
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Service Items</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SL</th>
+                            <th>Item Name</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bill.items && bill.items.length > 0 ?
+                             bill.items.map((item, index) => `
                                 <tr>
-                                    <th>SL</th>
-                                    <th>Item Name</th>
-                                    <th>Type</th>
-                                    <th>Price</th>
+                                    <td>${index + 1}</td>
+                                    <td>${item.item_name}</td>
+                                    <td><span class="status">${item.item_type === 'test' ? 'Test' : 'Service'}</span></td>
+                                    <td>৳${parseFloat(item.item_price).toFixed(2)}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${bill.items && bill.items.length > 0 ? 
-                                    bill.items.map((item, index) => `
-                                        <tr>
-                                            <td>${index + 1}</td>
-                                            <td>${item.item_name}</td>
-                                            <td><span class="status">${item.item_type === 'test' ? 'Test' : 'Service'}</span></td>
-                                            <td>৳${parseFloat(item.item_price).toFixed(2)}</td>
-                                        </tr>
-                                    `).join('') : 
-                                    '<tr><td colspan="4" class="no-data">No items found</td></tr>'
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            `).join('') :
+                             '<tr><td colspan="4" class="no-data">No items found</td></tr>'
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <!-- Financial Summary -->
-                <div class="bill-detail-section">
-                    <div class="bill-detail-title">Financial Summary</div>
-                    <div class="bill-summary">
-                        <div class="summary-row">
-                            <span>Subtotal:</span>
-                            <span>৳${parseFloat(bill.subtotal || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Discount (${bill.discount_type === 'percentage' ? bill.discount_value + '%' : '৳' + bill.discount_value}):</span>
-                            <span>৳${parseFloat(bill.discount_amount || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row total">
-                            <span>Total Amount:</span>
-                            <span>৳${parseFloat(bill.total_amount).toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Paid Amount:</span>
-                            <span>৳${parseFloat(bill.paid_amount || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Due Amount:</span>
-                            <span>৳${dueAmount.toFixed(2)}</span>
-                        </div>
-                    </div>
+        <!-- Financial Summary -->
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Financial Summary</div>
+            <div class="bill-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span>৳${parseFloat(bill.subtotal || bill.total_amount).toFixed(2)}</span>
                 </div>
+                <div class="summary-row">
+                    <span>Discount (${bill.discount_type === 'percentage' ? (bill.discount_value || 0) + '%' : '৳' + (bill.discount_value || 0)}):</span>
+                    <span>৳${parseFloat(bill.discount_amount || 0).toFixed(2)}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total Amount:</span>
+                    <span>৳${parseFloat(bill.total_amount).toFixed(2)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Paid Amount:</span>
+                    <span>৳${parseFloat(bill.paid_amount || 0).toFixed(2)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Due Amount:</span>
+                    <span>৳${dueAmount.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
 
-                <!-- Payment History -->
-                ${bill.payments && bill.payments.length > 0 ? `
-                <div class="bill-detail-section">
-                    <div class="bill-detail-title">Payment History</div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${bill.payments.map(payment => `
-                                    <tr>
-                                        <td>${formatDate(payment.payment_date)}</td>
-                                        <td>৳${parseFloat(payment.amount).toFixed(2)}</td>
-                                        <td>${payment.payment_method}</td>
-                                        <td>${payment.notes || '-'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                ` : ''}
-            `;
-        }
+        <!-- Payment History -->
+        ${bill.payments && bill.payments.length > 0 ? `
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Payment History</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SL</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bill.payments.map((payment, index) => `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${formatDate(payment.payment_date)}</td>
+                                <td>৳${parseFloat(payment.amount).toFixed(2)}</td>
+                                <td><span class="status">${payment.payment_method}</span></td>
+                                <td>${payment.notes || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        ` : `
+        <div class="bill-detail-section">
+            <div class="bill-detail-title">Payment History</div>
+            <div class="no-data">No payments made yet</div>
+        </div>
+        `}
+    `;
+}
 
         // Populate patient dropdown
         function populatePatientDropdown() {
             const patientSelect = document.getElementById('billPatient');
             patientSelect.innerHTML = '<option value="">Select Patient</option>';
-            
+                        
             patients.forEach(patient => {
                 const option = document.createElement('option');
                 option.value = patient.id;
@@ -642,27 +852,29 @@
         // Populate test selector
         function populateTestSelector() {
             const testSelector = document.getElementById('testSelector');
-            testSelector.innerHTML = '';
-            
-            tests.forEach(test => {
-                const testOption = document.createElement('div');
-                testOption.className = 'test-option';
-                testOption.innerHTML = `
-                    <div>
-                        <input type="checkbox" id="test_${test.id}" value="${test.id}" onchange="toggleTest(${test.id})">
-                        <label for="test_${test.id}">${test.name} (${test.category})</label>
-                    </div>
-                    <div class="test-price">৳${parseFloat(test.price).toFixed(2)}</div>
-                `;
-                testSelector.appendChild(testOption);
-            });
+            if (testSelector) {
+                testSelector.innerHTML = '';
+                                
+                tests.forEach(test => {
+                    const testOption = document.createElement('div');
+                    testOption.className = 'test-option';
+                    testOption.innerHTML = `
+                        <div>
+                            <input type="checkbox" id="test_${test.id}" value="${test.id}" onchange="toggleTest(${test.id})">
+                            <label for="test_${test.id}">${test.name} (${test.category})</label>
+                        </div>
+                        <div class="test-price">৳${parseFloat(test.price).toFixed(2)}</div>
+                    `;
+                    testSelector.appendChild(testOption);
+                });
+            }
         }
 
         // Toggle test selection
         function toggleTest(testId) {
             const checkbox = document.getElementById(`test_${testId}`);
             const test = tests.find(t => t.id === testId);
-            
+                        
             if (checkbox.checked) {
                 selectedItems.push({
                     type: 'test',
@@ -673,7 +885,7 @@
             } else {
                 selectedItems = selectedItems.filter(item => !(item.type === 'test' && item.id === testId));
             }
-            
+                        
             updateSelectedItems();
             calculateBillSummary();
         }
@@ -682,22 +894,22 @@
         function addManualItem() {
             const name = document.getElementById('manualItemName').value.trim();
             const price = parseFloat(document.getElementById('manualItemPrice').value) || 0;
-            
+                        
             if (!name || price <= 0) {
                 showToast('Please enter valid item name and price', 'warning');
                 return;
             }
-            
+                        
             selectedItems.push({
                 type: 'manual',
                 id: Date.now(),
                 name: name,
                 price: price
             });
-            
+                        
             document.getElementById('manualItemName').value = '';
             document.getElementById('manualItemPrice').value = '';
-            
+                        
             updateSelectedItems();
             calculateBillSummary();
         }
@@ -705,12 +917,12 @@
         // Update selected items display
         function updateSelectedItems() {
             const itemsList = document.getElementById('itemsList');
-            
+                        
             if (selectedItems.length === 0) {
                 itemsList.innerHTML = '<div class="no-data">No items selected</div>';
                 return;
             }
-            
+                        
             itemsList.innerHTML = '';
             selectedItems.forEach((item, index) => {
                 const itemDiv = document.createElement('div');
@@ -731,7 +943,8 @@
         function removeItem(index) {
             const item = selectedItems[index];
             if (item.type === 'test') {
-                document.getElementById(`test_${item.id}`).checked = false;
+                const checkbox = document.getElementById(`test_${item.id}`);
+                if (checkbox) checkbox.checked = false;
             }
             selectedItems.splice(index, 1);
             updateSelectedItems();
@@ -743,18 +956,18 @@
             const subtotal = selectedItems.reduce((sum, item) => sum + item.price, 0);
             const discountType = document.getElementById('discountType').value;
             const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-            
+                        
             let discountAmount = 0;
             if (discountType === 'percentage') {
                 discountAmount = (subtotal * discountValue) / 100;
             } else {
                 discountAmount = discountValue;
             }
-            
+                        
             const totalAmount = subtotal - discountAmount;
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
             const dueAmount = totalAmount - paidAmount;
-            
+                        
             document.getElementById('subtotalAmount').textContent = `৳${subtotal.toFixed(2)}`;
             document.getElementById('discountAmount').textContent = `৳${discountAmount.toFixed(2)}`;
             document.getElementById('totalAmount').textContent = `৳${totalAmount.toFixed(2)}`;
@@ -768,17 +981,17 @@
             selectedItems = [];
             document.getElementById('modalTitle').textContent = 'Create New Bill';
             document.getElementById('billingForm').reset();
-            
+                        
             // Set default date to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('billDate').value = today;
-            
+                        
             // Clear test selections
             tests.forEach(test => {
                 const checkbox = document.getElementById(`test_${test.id}`);
                 if (checkbox) checkbox.checked = false;
             });
-            
+                        
             updateSelectedItems();
             calculateBillSummary();
             document.getElementById('billingModal').style.display = 'block';
@@ -786,96 +999,122 @@
 
         // Edit bill
         async function editBill(id) {
-            try {
-                const response = await fetch(`/api/billing/advanced/${id}`);
-                const bill = await response.json();
-                
-                if (response.ok) {
-                    currentBillId = id;
-                    document.getElementById('modalTitle').textContent = 'Edit Bill';
-                    document.getElementById('billPatient').value = bill.patient_id;
-                    document.getElementById('billDate').value = bill.billing_date;
-                    document.getElementById('paidAmount').value = bill.paid_amount || 0;
-                    document.getElementById('paymentMethod').value = bill.payment_method || 'cash';
-                    document.getElementById('discountType').value = bill.discount_type || 'amount';
-                    document.getElementById('discountValue').value = bill.discount_value || 0;
-                    
-                    // Load bill items
-                    selectedItems = bill.items ? bill.items.map(item => ({
-                        type: item.item_type,
-                        id: item.test_id || Date.now(),
-                        name: item.item_name,
-                        price: parseFloat(item.item_price)
-                    })) : [];
-                    
-                    // Update test checkboxes
-                    tests.forEach(test => {
-                        const checkbox = document.getElementById(`test_${test.id}`);
-                        if (checkbox) {
-                            checkbox.checked = selectedItems.some(item => item.type === 'test' && item.id === test.id);
-                        }
-                    });
-                    
-                    // Close view modal if open
-                    document.getElementById('billViewModal').style.display = 'none';
-                    
-                    updateSelectedItems();
-                    calculateBillSummary();
-                    document.getElementById('billingModal').style.display = 'block';
-                } else {
-                    showToast('Failed to load bill details', 'error');
-                }
-            } catch (error) {
-                showToast('Network error loading bill', 'error');
+    try {
+        const response = await fetch(`/api/billing/advanced/${id}`);
+        const bill = await response.json();
+                        
+        if (response.ok) {
+            currentBillId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Bill';
+            
+            // Patient data pre-populate 
+            const patient = patients.find(p => p.id == bill.patient_id);
+            if (patient) {
+                document.getElementById('billPatientSearch').value = patient.name;
+                document.getElementById('billPatient').value = patient.id;
             }
+            
+            document.getElementById('billDate').value = bill.billing_date;
+            document.getElementById('paidAmount').value = bill.paid_amount || 0;
+            document.getElementById('paymentMethod').value = bill.payment_method || 'cash';
+            document.getElementById('discountType').value = bill.discount_type || 'amount';
+            document.getElementById('discountValue').value = bill.discount_value || 0;
+                                    
+            // Load bill items
+            selectedItems = bill.items ? bill.items.map(item => ({
+                type: item.item_type,
+                id: item.test_id || Date.now(),
+                name: item.item_name,
+                price: parseFloat(item.item_price)
+            })) : [];
+                                    
+            // Update test checkboxes
+            tests.forEach(test => {
+                const checkbox = document.getElementById(`test_${test.id}`);
+                if (checkbox) {
+                    checkbox.checked = selectedItems.some(item => item.type === 'test' && item.id === test.id);
+                }
+            });
+                                    
+            // Close view modal if open
+            document.getElementById('billViewModal').style.display = 'none';
+                                    
+            renderSelectedItems();
+            calculateBillSummary();
+            document.getElementById('billingModal').style.display = 'block';
+        } else {
+            showToast('Failed to load bill details', 'error');
         }
+    } catch (error) {
+        showToast('Network error loading bill', 'error');
+    }
+}
 
-        // Save bill
-        async function saveBill(formData) {
-            if (selectedItems.length === 0) {
-                showToast('Please select at least one item', 'warning');
-                return;
-            }
+// Save bill
+async function saveBill(formData) {
+    if (selectedItems.length === 0) {
+        showToast('Please select at least one item', 'warning');
+        return;
+    }
+                
+    const billData = {
+        ...formData,
+        items: selectedItems,
+        discount_type: document.getElementById('discountType').value,
+        discount_value: parseFloat(document.getElementById('discountValue').value) || 0,
+        subtotal: selectedItems.reduce((sum, item) => sum + item.price, 0)
+    };
+                
+    const url = currentBillId ? `/api/billing/advanced/${currentBillId}` : '/api/billing/advanced';
+    const method = currentBillId ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(billData)
+        });
+        
+        // Response check 
+        if (response.ok || response.status === 200 || response.status === 201) {
+            // Success
+            showToast(currentBillId ? 'Bill updated successfully!' : 'Bill created successfully!', 'success');
             
-            const billData = {
-                ...formData,
-                items: selectedItems,
-                discount_type: document.getElementById('discountType').value,
-                discount_value: parseFloat(document.getElementById('discountValue').value) || 0,
-                subtotal: selectedItems.reduce((sum, item) => sum + item.price, 0)
-            };
+            // Modal close 
+            document.getElementById('billingModal').style.display = 'none';
             
-            const url = currentBillId ? `/api/billing/advanced/${currentBillId}` : '/api/billing/advanced';
-            const method = currentBillId ? 'PUT' : 'POST';
+            // Bills reload 
+            await loadBills();
             
+            // Form reset 
+            document.getElementById('billingForm').reset();
+            selectedItems = [];
+            renderSelectedItems();
+            
+        } else {
+            // Error
+            let errorMessage = 'Failed to save bill';
             try {
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(billData)
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showToast(currentBillId ? 'Bill updated successfully' : 'Bill created successfully', 'success');
-                    document.getElementById('billingModal').style.display = 'none';
-                    loadBills();
-                } else {
-                    showToast(data.error || 'Failed to save bill', 'error');
-                }
-            } catch (error) {
-                showToast('Network error saving bill', 'error');
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = `Server error: ${response.status}`;
             }
+            showToast(errorMessage, 'error');
         }
+    } catch (error) {
+        console.error('Network error:', error);
+        showToast('Network error: Unable to save bill', 'error');
+    }
+}
 
         // Add payment
         function addPayment(billId) {
             const bill = bills.find(b => b.id === billId);
             if (!bill) return;
-            
+                        
             const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
             document.getElementById('paymentBillId').value = billId;
             document.getElementById('paymentAmount').value = dueAmount.toFixed(2);
@@ -886,7 +1125,7 @@
         // Save payment
         async function savePayment(formData) {
             const billId = document.getElementById('paymentBillId').value;
-            
+                        
             try {
                 const response = await fetch(`/api/billing/advanced/${billId}/payment`, {
                     method: 'POST',
@@ -895,9 +1134,9 @@
                     },
                     body: JSON.stringify(formData)
                 });
-                
+                                
                 const data = await response.json();
-                
+                                
                 if (response.ok) {
                     showToast('Payment added successfully', 'success');
                     document.getElementById('paymentModal').style.display = 'none';
@@ -914,15 +1153,15 @@
         async function downloadBillPDF(billId) {
             try {
                 const response = await fetch(`/api/billing/advanced/${billId}/pdf`);
-                
+                                
                 if (response.ok) {
                     const htmlContent = await response.text();
-                    
+                                        
                     // Open in new window for viewing/printing
                     const newWindow = window.open('', '_blank');
                     newWindow.document.write(htmlContent);
                     newWindow.document.close();
-                    
+                                        
                     showToast('PDF opened in new window', 'success');
                 } else {
                     showToast('Failed to generate PDF', 'error');
@@ -939,7 +1178,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     currentUser = data.user;
-                    
+                                        
                     // Show advanced link only for admin
                     if (currentUser.role === 'admin') {
                         document.getElementById('advancedLink').style.display = 'block';
@@ -955,44 +1194,57 @@
             checkAuthAndLoadUser();
             checkUserRole();
             loadAllData();
-            
+
+            // Search functionality 
+            const searchInput = document.getElementById('billSearchInput');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+            searchInput.addEventListener('input', (e) => {
+                searchBills(e.target.value);
+            });
+
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                searchBills('');
+            });
+                        
             // Add bill button
             document.getElementById('addBillBtn').addEventListener('click', addBill);
-            
+                        
             // Add manual item button
             document.getElementById('addManualItemBtn').addEventListener('click', addManualItem);
-            
+                        
             // Discount and payment change listeners
             document.getElementById('discountType').addEventListener('change', calculateBillSummary);
             document.getElementById('discountValue').addEventListener('input', calculateBillSummary);
             document.getElementById('paidAmount').addEventListener('input', calculateBillSummary);
-            
+                        
             // Modal close buttons
             document.querySelector('.close').addEventListener('click', () => {
                 document.getElementById('billingModal').style.display = 'none';
             });
-            
+                        
             document.getElementById('viewModalClose').addEventListener('click', () => {
                 document.getElementById('billViewModal').style.display = 'none';
             });
-            
+                        
             document.getElementById('paymentModalClose').addEventListener('click', () => {
                 document.getElementById('paymentModal').style.display = 'none';
             });
-            
+                        
             // Cancel buttons
             document.getElementById('cancelBtn').addEventListener('click', () => {
                 document.getElementById('billingModal').style.display = 'none';
             });
-            
+                        
             document.getElementById('closeViewBtn').addEventListener('click', () => {
                 document.getElementById('billViewModal').style.display = 'none';
             });
-            
+                        
             document.getElementById('cancelPaymentBtn').addEventListener('click', () => {
                 document.getElementById('paymentModal').style.display = 'none';
             });
-            
+                        
             // Form submits
             document.getElementById('billingForm').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -1000,14 +1252,14 @@
                 const billData = Object.fromEntries(formData);
                 saveBill(billData);
             });
-            
+                        
             document.getElementById('paymentForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const paymentData = Object.fromEntries(formData);
                 savePayment(paymentData);
             });
-            
+                        
             // Close modals when clicking outside
             window.addEventListener('click', (e) => {
                 if (e.target === document.getElementById('billingModal')) {
