@@ -19,6 +19,7 @@ function connectDB() {
         createTables()
           .then(() => runMigrations())
           .then(() => createDefaultUsers())
+          .then(() => seedDatabase())
           .then(() => {
             console.log("✅ Database setup complete");
             resolve();
@@ -70,9 +71,12 @@ function createTables() {
 
       `CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        unique_id TEXT,
         name TEXT NOT NULL,
         specialty TEXT NOT NULL,
         contact TEXT NOT NULL,
+        room_number TEXT,
+        visit_fee REAL DEFAULT 0,
         schedule TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -189,7 +193,26 @@ function createTables() {
 
 
 function runMigrations() {
-  return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const columnsToAdd = [
+      { name: 'unique_id', type: 'TEXT' },
+      { name: 'room_number', type: 'TEXT' },
+      { name: 'visit_fee', type: 'REAL DEFAULT 0' }
+    ];
+
+    let processed = 0;
+    if (columnsToAdd.length === 0) return resolve();
+
+    columnsToAdd.forEach(col => {
+      db.run(`ALTER TABLE doctors ADD COLUMN ${col.name} ${col.type}`, (err) => {
+        // Ignore error if column already exists
+        processed++;
+        if (processed === columnsToAdd.length) {
+          resolve();
+        }
+      });
+    });
+  });
 }
 
 function createDefaultUsers() {
@@ -238,6 +261,59 @@ function createDefaultUsers() {
         if (completed === total) {
           resolve();
         }
+      });
+    });
+  });
+}
+
+function seedDatabase() {
+  return new Promise((resolve, reject) => {
+    // Check if doctors table is empty
+    db.get("SELECT COUNT(*) as count FROM doctors", [], (err, row) => {
+      if (err) return reject(err);
+      if (row.count > 0) return resolve(); // Already seeded
+
+      console.log("🌱 Seeding database with sample data...");
+
+      const doctors = [
+        ["DOC001", "Dr. Sarah Hasan", "Cardiology", "01711223344", "Room 302", 1000, "Sat-Thu: 4PM-9PM"],
+        ["DOC002", "Dr. Kamal Ahmed", "Neurology", "01822334455", "Room 405", 1200, "Mon-Fri: 5PM-8PM"],
+        ["DOC003", "Dr. Nusrat Jahan", "Gynecology", "01933445566", "Room 201", 800, "Sun-Wed: 10AM-2PM"],
+        ["DOC004", "Dr. Sarah Hasan", "Pediatrics", "01544556677", "Room 105", 700, "Everyday: 3PM-6PM"],
+        ["DOC005", "Dr. Rafiqul Islam", "Orthopedics", "01355667788", "Room 502", 1500, "Sat, Mon, Wed: 6PM-10PM"]
+      ];
+
+      const patients = [
+        ["Abidur Rahman", 35, "male", "01700000001", "Dhaka, Bangladesh", "None"],
+        ["Farhana Yeasmin", 28, "female", "01700000002", "Chittagong, Bangladesh", "Allergy to Dust"],
+        ["Sabbir Hossain", 45, "male", "01700000003", "Sylhet, Bangladesh", "High Blood Pressure"],
+        ["Mitu Akter", 22, "female", "01700000004", "Rajshahi, Bangladesh", "None"],
+        ["Zakir Khan", 60, "male", "01700000005", "Khulna, Bangladesh", "Diabetes"]
+      ];
+
+      const tests = [
+        ["CBC", "Blood", 500, "Complete Blood Count"],
+        ["X-Ray Chest", "Radiology", 800, "Chest X-Ray PA View"],
+        ["ECG", "Cardiology", 600, "Electrocardiogram"],
+        ["Blood Sugar", "Blood", 200, "Fasting and PP Blood Sugar"],
+        ["MRI Brain", "Radiology", 5000, "Magnetic Resonance Imaging of Brain"]
+      ];
+
+      db.serialize(() => {
+        doctors.forEach(doc => {
+          db.run(`INSERT INTO doctors (unique_id, name, specialty, contact, room_number, visit_fee, schedule) VALUES (?, ?, ?, ?, ?, ?, ?)`, doc);
+        });
+
+        patients.forEach(pat => {
+          db.run(`INSERT INTO patients (name, age, gender, contact, address, medical_history) VALUES (?, ?, ?, ?, ?, ?)`, pat);
+        });
+
+        tests.forEach(test => {
+          db.run(`INSERT INTO tests (name, category, price, description) VALUES (?, ?, ?, ?)`, test);
+        });
+
+        console.log("✅ Seeding complete");
+        resolve();
       });
     });
   });

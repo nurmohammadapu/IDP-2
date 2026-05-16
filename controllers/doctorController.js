@@ -31,7 +31,7 @@ async function getById(req, res, id) {
 
 async function create(req, res) {
   try {
-    const { name, specialty, contact, schedule } = req.body
+    const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = req.body
 
     if (!name || !specialty || !contact) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -40,9 +40,12 @@ async function create(req, res) {
     }
 
     const doctorId = await createDoctor({
+      unique_id,
       name,
       specialty,
       contact,
+      room_number,
+      visit_fee,
       schedule,
     })
 
@@ -57,7 +60,7 @@ async function create(req, res) {
 
 async function update(req, res, id) {
   try {
-    const { name, specialty, contact, schedule } = req.body
+    const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = req.body
 
     if (!name || !specialty || !contact) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -66,9 +69,12 @@ async function update(req, res, id) {
     }
 
     await updateDoctor(id, {
+      unique_id,
       name,
       specialty,
       contact,
+      room_number,
+      visit_fee,
       schedule,
     })
 

@@ -41,16 +41,19 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Unique ID</th>
                                 <th>Name</th>
                                 <th>Specialty</th>
                                 <th>Contact</th>
+                                <th>Room</th>
+                                <th>Fee</th>
                                 <th>Schedule</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="loading">Loading doctors...</td>
+                                <td colspan="9" class="loading">Loading doctors...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -69,18 +72,33 @@
             <form id="doctorForm">
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="doctorUniqueId">Unique ID</label>
+                        <input type="text" id="doctorUniqueId" name="unique_id">
+                    </div>
+                    <div class="form-group">
                         <label for="doctorName">Name *</label>
                         <input type="text" id="doctorName" name="name" required>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label for="doctorSpecialty">Specialty *</label>
                         <input type="text" id="doctorSpecialty" name="specialty" required>
                     </div>
+                    <div class="form-group">
+                        <label for="doctorContact">Contact *</label>
+                        <input type="tel" id="doctorContact" name="contact" required>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="doctorContact">Contact *</label>
-                    <input type="tel" id="doctorContact" name="contact" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="doctorRoomNumber">Room Number</label>
+                        <input type="text" id="doctorRoomNumber" name="room_number">
+                    </div>
+                    <div class="form-group">
+                        <label for="doctorVisitFee">Visit Fee</label>
+                        <input type="number" id="doctorVisitFee" name="visit_fee" step="0.01">
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -124,7 +142,7 @@
         tbody.innerHTML = '';
 
         if (doctorsData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No doctors found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="no-data">No doctors found</td></tr>';
             return;
         }
 
@@ -132,9 +150,12 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${doctor.id}</td>
+                <td>${doctor.unique_id || '-'}</td>
                 <td>${doctor.name}</td>
                 <td>${doctor.specialty}</td>
                 <td>${doctor.contact}</td>
+                <td>${doctor.room_number || '-'}</td>
+                <td>${doctor.visit_fee || '0'}</td>
                 <td>${doctor.schedule || 'Not specified'}</td>
                 <td>
                     <button class="btn btn-sm btn-secondary" onclick="editDoctor(${doctor.id})">Edit</button>
@@ -208,9 +229,12 @@
             
             currentDoctorId = id;
             document.getElementById('modalTitle').textContent = 'Edit Doctor';
+            document.getElementById('doctorUniqueId').value = doctor.unique_id || '';
             document.getElementById('doctorName').value = doctor.name;
             document.getElementById('doctorSpecialty').value = doctor.specialty;
             document.getElementById('doctorContact').value = doctor.contact;
+            document.getElementById('doctorRoomNumber').value = doctor.room_number || '';
+            document.getElementById('doctorVisitFee').value = doctor.visit_fee || '';
             document.getElementById('doctorSchedule').value = doctor.schedule || '';
             document.getElementById('doctorModal').style.display = 'block';
         }

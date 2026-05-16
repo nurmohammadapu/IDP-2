@@ -71,10 +71,16 @@
             <div class="form-group">
             <label for="patientSearchInput">Patient *</label>
             <div class="searchable-select" id="patientSelectContainer">
-                <input type="text" id="patientSearchInput" placeholder="Search Patient..." autocomplete="off" required />
+                <input type="text" id="patientSearchInput" placeholder="Search Patient by Name, ID or Phone..." autocomplete="off" required />
                 <div class="options-list" id="patientOptions"></div>
             </div>
-            <input type="hidden" name="patient_id" id="patient_id" required />
+            <input type="hidden" name="patient_id" id="patient_id" />
+            <div id="newPatientCheckboxContainer" style="margin-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="isNewPatient" />
+                    <span>New Patient?</span>
+                </label>
+            </div>
             </div>
             <div class="form-group">
             <label for="doctorSearchInput">Doctor *</label>
@@ -83,6 +89,40 @@
                 <div class="options-list" id="doctorOptions"></div>
             </div>
             <input type="hidden" name="doctor_id" id="doctor_id" required />
+            </div>
+        </div>
+
+        <!-- New Patient Fields (Initially Hidden) -->
+        <div id="newPatientFields" style="display: none; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
+            <h3 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 15px;">New Patient Details</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="newPatientName">Full Name *</label>
+                    <input type="text" id="newPatientName" placeholder="Patient Name">
+                </div>
+                <div class="form-group">
+                    <label for="newPatientAge">Age *</label>
+                    <input type="number" id="newPatientAge" placeholder="Age">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="newPatientGender">Gender *</label>
+                    <select id="newPatientGender">
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newPatientContact">Contact Number *</label>
+                    <input type="tel" id="newPatientContact" placeholder="Phone Number">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="newPatientAddress">Address *</label>
+                <textarea id="newPatientAddress" rows="2" placeholder="Patient Address"></textarea>
             </div>
         </div>
 
@@ -102,7 +142,6 @@
             <select id="appointmentStatus" name="status">
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
-            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
             </select>
         </div>
@@ -138,12 +177,6 @@
         };
     }
 
-    // Option select handler: Set input value and hidden input id, then hide options
-    function selectOption(inputEl, optionsDiv, hiddenInput, item) {
-        inputEl.value = item.name + (item.specialty ? ` - ${item.specialty}` : '');
-        hiddenInput.value = item.id;
-        optionsDiv.style.display = 'none';
-    }
 
     // Fetch search results from API and display options
     async function fetchAndShowOptions(apiUrl, query, inputEl, optionsDiv, hiddenInput) {
@@ -165,8 +198,21 @@
                 data.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'option-item';
-                    div.textContent = item.name + (item.specialty ? ` - ${item.specialty}` : '');
-                    div.addEventListener('click', () => selectOption(inputEl, optionsDiv, hiddenInput, item));
+                    const isPatient = apiUrl.includes('patients');
+                    if (isPatient) {
+                        div.textContent = `${item.name} (ID: ${item.id}, Phone: ${item.contact})`;
+                    } else {
+                        div.textContent = `${item.name} - ${item.specialty} (UID: ${item.unique_id || item.id}, Phone: ${item.contact})`;
+                    }
+                    div.addEventListener('click', () => {
+                        if (isPatient) {
+                            inputEl.value = item.name;
+                        } else {
+                            inputEl.value = item.name + (item.specialty ? ` - ${item.specialty}` : '');
+                        }
+                        hiddenInput.value = item.id;
+                        optionsDiv.style.display = 'none';
+                    });
                     optionsDiv.appendChild(div);
                 });
             }
@@ -249,7 +295,13 @@
         document.getElementById('appointmentForm').reset();
 
         document.getElementById('patientSearchInput').value = '';
+        document.getElementById('patientSearchInput').disabled = false;
+        document.getElementById('patientSearchInput').required = true;
         document.getElementById('patient_id').value = '';
+
+        document.getElementById('isNewPatient').checked = false;
+        document.getElementById('newPatientFields').style.display = 'none';
+        document.getElementById('newPatientCheckboxContainer').style.display = 'block';
 
         document.getElementById('doctorSearchInput').value = '';
         document.getElementById('doctor_id').value = '';
@@ -269,9 +321,15 @@
 
         currentAppointmentId = id;
         document.getElementById('modalTitle').textContent = 'Edit Appointment';
+        document.getElementById('appointmentForm').reset();
 
         document.getElementById('patientSearchInput').value = appointment.patient_name;
+        document.getElementById('patientSearchInput').disabled = false;
         document.getElementById('patient_id').value = appointment.patient_id;
+
+        document.getElementById('isNewPatient').checked = false;
+        document.getElementById('newPatientFields').style.display = 'none';
+        document.getElementById('newPatientCheckboxContainer').style.display = 'none'; // Hide "New Patient" option during edit
 
         document.getElementById('doctorSearchInput').value = appointment.doctor_name + (appointment.doctor_specialty ? ` - ${appointment.doctor_specialty}` : '');
         document.getElementById('doctor_id').value = appointment.doctor_id;
@@ -307,9 +365,35 @@
 
     // Save (create or update) appointment
     async function saveAppointment(formData) {
-        if (!formData.patient_id || !formData.doctor_id) {
-            showToast('Please select valid Patient and Doctor from the list', 'error');
+        const isNewPatient = document.getElementById('isNewPatient').checked;
+        
+        if (!isNewPatient && !formData.patient_id) {
+            showToast('Please select valid Patient from the list or check "New Patient"', 'error');
             return;
+        }
+
+        if (!formData.doctor_id) {
+            showToast('Please select a valid Doctor from the list', 'error');
+            return;
+        }
+
+        let payload = { ...formData };
+
+        if (isNewPatient) {
+            const newPatientData = {
+                name: document.getElementById('newPatientName').value,
+                age: document.getElementById('newPatientAge').value,
+                gender: document.getElementById('newPatientGender').value,
+                contact: document.getElementById('newPatientContact').value,
+                address: document.getElementById('newPatientAddress').value
+            };
+
+            if (!newPatientData.name || !newPatientData.age || !newPatientData.gender || !newPatientData.contact || !newPatientData.address) {
+                showToast('Please fill all new patient fields', 'error');
+                return;
+            }
+            payload.new_patient = newPatientData;
+            delete payload.patient_id;
         }
 
         const url = currentAppointmentId ? `/api/appointments/${currentAppointmentId}` : '/api/appointments';
@@ -321,7 +405,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -330,6 +414,7 @@
                 showToast(currentAppointmentId ? 'Appointment updated successfully' : 'Appointment booked successfully', 'success');
                 document.getElementById('appointmentModal').style.display = 'none';
                 loadAppointments();
+                // If new patient was added, you might want to refresh patients list if needed elsewhere
             } else {
                 showToast(data.error || 'Failed to save appointment', 'error');
             }
@@ -382,10 +467,28 @@
             }
         });
 
-        // Setup patient search inputs
-        const patientInput = document.getElementById('patientSearchInput');
-        const patientOptions = document.getElementById('patientOptions');
+        // New Patient Checkbox Toggle
+        const isNewPatientCheckbox = document.getElementById('isNewPatient');
+        const newPatientFields = document.getElementById('newPatientFields');
+        const patientSearchInput = document.getElementById('patientSearchInput');
         const patientHidden = document.getElementById('patient_id');
+
+        isNewPatientCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                newPatientFields.style.display = 'block';
+                patientSearchInput.disabled = true;
+                patientSearchInput.required = false;
+                patientSearchInput.value = '';
+                patientHidden.value = '';
+            } else {
+                newPatientFields.style.display = 'none';
+                patientSearchInput.disabled = false;
+                patientSearchInput.required = true;
+            }
+        });
+
+        // Setup patient search inputs
+        const patientOptions = document.getElementById('patientOptions');
 
         // Setup doctor search inputs
         const doctorInput = document.getElementById('doctorSearchInput');
@@ -394,7 +497,7 @@
 
         // Debounced patient search
         const debouncedPatientSearch = debounce(() => {
-            fetchAndShowOptions('/api/patients', patientInput.value.trim(), patientInput, patientOptions, patientHidden);
+            fetchAndShowOptions('/api/patients', patientSearchInput.value.trim(), patientSearchInput, patientOptions, patientHidden);
         }, 300);
 
         // Debounced doctor search
@@ -403,7 +506,7 @@
         }, 300);
 
         // Patient input event
-        patientInput.addEventListener('input', () => {
+        patientSearchInput.addEventListener('input', () => {
             patientHidden.value = '';
             debouncedPatientSearch();
         });

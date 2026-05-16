@@ -35,9 +35,22 @@ async function getById(req, res, id) {
   }
 }
 
+const { createPatient } = require("../models/patientModel")
+
 async function create(req, res) {
   try {
-    const { patient_id, doctor_id, appointment_date, appointment_time, notes } = req.body
+    let { patient_id, doctor_id, appointment_date, appointment_time, notes, new_patient } = req.body
+
+    // If no patient_id but new_patient data is provided, create the patient first
+    if (!patient_id && new_patient) {
+      const { name, age, gender, contact, address } = new_patient
+      if (!name || !age || !gender || !contact || !address) {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "Missing required patient fields" }))
+        return
+      }
+      patient_id = await createPatient({ name, age, gender, contact, address })
+    }
 
     if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
       res.writeHead(400, { "Content-Type": "application/json" })
@@ -54,7 +67,7 @@ async function create(req, res) {
     })
 
     res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId }))
+    res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id }))
   } catch (error) {
     console.error("Create appointment error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
