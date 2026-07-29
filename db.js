@@ -59,7 +59,7 @@ function createTables() {
         name TEXT NOT NULL,
         age INTEGER NOT NULL,
         gender TEXT NOT NULL,
-        contact TEXT NOT NULL,
+        contact TEXT UNIQUE NOT NULL,
         address TEXT NOT NULL,
         medical_history TEXT,
         emergency_contact TEXT,
@@ -71,10 +71,10 @@ function createTables() {
 
       `CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unique_id TEXT,
+        unique_id TEXT UNIQUE,
         name TEXT NOT NULL,
         specialty TEXT NOT NULL,
-        contact TEXT NOT NULL,
+        contact TEXT UNIQUE NOT NULL,
         room_number TEXT,
         visit_fee REAL DEFAULT 0,
         schedule TEXT,
@@ -201,13 +201,45 @@ function runMigrations() {
     ];
 
     let processed = 0;
-    if (columnsToAdd.length === 0) return resolve();
+    const checkCompletion = () => {
+      processed++;
+      if (processed === columnsToAdd.length) {
+        createUniqueIndexes().then(resolve).catch(reject);
+      }
+    };
+
+    if (columnsToAdd.length === 0) {
+      createUniqueIndexes().then(resolve).catch(reject);
+      return;
+    }
 
     columnsToAdd.forEach(col => {
       db.run(`ALTER TABLE doctors ADD COLUMN ${col.name} ${col.type}`, (err) => {
         // Ignore error if column already exists
-        processed++;
-        if (processed === columnsToAdd.length) {
+        checkCompletion();
+      });
+    });
+  });
+}
+
+function createUniqueIndexes() {
+  return new Promise((resolve) => {
+    const indexes = [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_contact ON patients(contact)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_unique_id ON doctors(unique_id)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_contact ON doctors(contact)"
+    ];
+
+    let completed = 0;
+    if (indexes.length === 0) return resolve();
+
+    indexes.forEach(sql => {
+      db.run(sql, (err) => {
+        if (err) {
+          console.warn("Migration warning (index creation):", err.message);
+        }
+        completed++;
+        if (completed === indexes.length) {
           resolve();
         }
       });

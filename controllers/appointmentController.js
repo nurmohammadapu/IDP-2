@@ -20,8 +20,7 @@ async function getAll(req, res) {
 
 async function getById(req, res, id) {
   try {
-    const appointment = await getAppointmentById(id)
-    if (!appointment) {
+    const appointment = await getAppointmentById(id)    if (!appointment) {
       res.writeHead(404, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Appointment not found" }))
       return
@@ -70,6 +69,11 @@ async function create(req, res) {
     res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id }))
   } catch (error) {
     console.error("Create appointment error:", error)
+    if (error.message && (error.message.includes("UNIQUE constraint failed: patients.contact") || error.message.includes("patients.contact"))) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "A patient with this contact number already exists." }))
+      return
+    }
     res.writeHead(500, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ error: "Internal server error" }))
   }

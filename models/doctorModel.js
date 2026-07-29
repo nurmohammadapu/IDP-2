@@ -7,7 +7,7 @@ function createDoctor(doctorData) {
     const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = doctorData
     const sql = `INSERT INTO doctors (unique_id, name, specialty, contact, room_number, visit_fee, schedule, created_at, updated_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    db.run(sql, [unique_id || "", name, specialty, contact, room_number || "", visit_fee || 0, schedule || ""], function(err) {
+    db.run(sql, [unique_id || null, name, specialty, contact, room_number || "", visit_fee || 0, schedule || ""], function(err) {
       if (err) {
         reject(err)
         return
@@ -51,7 +51,7 @@ function updateDoctor(id, doctorData) {
   return new Promise((resolve, reject) => {
     const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = doctorData
     const sql = `UPDATE doctors SET unique_id = ?, name = ?, specialty = ?, contact = ?, room_number = ?, visit_fee = ?, schedule = ?, updated_at = datetime('now') WHERE id = ?`
-    db.run(sql, [unique_id, name, specialty, contact, room_number, visit_fee, schedule, id], function(err) {
+    db.run(sql, [unique_id || null, name, specialty, contact, room_number, visit_fee, schedule, id], function(err) {
       if (err) {
         reject(err)
         return

@@ -1,4 +1,4 @@
-const { createPatient, getAllPatients, updatePatient, deletePatient, searchPatients } = require("../models/patientModel")
+const { createPatient, getAllPatients, getPatientById, updatePatient, deletePatient, searchPatients } = require("../models/patientModel")
 const { auditAction } = require("../middleware/auditMiddleware")
 
 async function getAll(req, res) {
@@ -47,6 +47,11 @@ async function create(req, res) {
     res.end(JSON.stringify({ message: "Patient created successfully", patientId }))
   } catch (error) {
     console.error("Create patient error:", error)
+    if (error.message && (error.message.includes("UNIQUE constraint failed: patients.contact") || error.message.includes("patients.contact"))) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "A patient with this contact number already exists." }))
+      return
+    }
     res.writeHead(500, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ error: "Internal server error" }))
   }
@@ -92,12 +97,34 @@ async function update(req, res, id) {
     res.end(JSON.stringify({ message: "Patient updated successfully" }))
   } catch (error) {
     console.error("Update patient error:", error)
+    if (error.message && (error.message.includes("UNIQUE constraint failed: patients.contact") || error.message.includes("patients.contact"))) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "A patient with this contact number already exists." }))
+      return
+    }
     res.writeHead(500, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ error: "Internal server error" }))
   }
 }
 
-async function remove(req, res, id) {
+async function getById(req, res, id) {
+  try {
+    const patient = await getPatientById(id)
+    if (!patient) {
+      res.writeHead(404, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Patient not found" }))
+      return
+    }
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(patient))
+  } catch (error) {
+    console.error("Get patient error:", error)
+    res.writeHead(500, { "Content-Type": "application/json" })
+    res.end(JSON.stringify({ error: "Internal server error" }))
+  }
+}
+
+async function deletePatientById(req, res, id) {
   try {
     // Get patient data for audit before deletion
     const patients = await getAllPatients()
@@ -130,8 +157,9 @@ async function search(req, res, query) {
 }
 module.exports = {
   getAll,
+  getById,
   create,
   update,
-  remove,
+  deletePatientById,
   search,
 }
