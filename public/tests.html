@@ -5,15 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tests Management - Hospital Management System</title>
     <link rel="stylesheet" href="styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* (Optional) search input styling */
         #searchTests {
-            padding: 6px 12px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
             width: 250px;
             margin-left: 20px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #f8fafc;
+        }
+
+        #searchTests:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: #fff;
         }
     </style>
 </head>

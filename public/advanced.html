@@ -5,88 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Features - Hospital Management System</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         .advanced-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            gap: 1.5rem;
             margin-bottom: 2rem;
         }
         
         .feature-card {
             background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #3498db;
+            padding: 1.75rem;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            border: 1px solid #f1f5f9;
+            border-left: 4px solid #4f46e5;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feature-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
         }
         
         .feature-card h3 {
-            color: #2c3e50;
-            margin-bottom: 1rem;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        .feature-card p {
+            color: #64748b;
+            font-size: 0.88rem;
+            line-height: 1.5;
         }
         
         .feature-icon {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
         }
         
         .notification-badge {
-            background: #e74c3c;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             border-radius: 50%;
-            padding: 0.2rem 0.5rem;
-            font-size: 0.8rem;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
             margin-left: 0.5rem;
         }
         
         .export-buttons {
             display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
         }
         
         .search-advanced {
             background: white;
             padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             margin-bottom: 2rem;
+            border: 1px solid #f1f5f9;
+        }
+
+        .search-advanced h3 {
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
         }
         
         .search-filters {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
         }
         
         .audit-log {
-            background: #f8f9fa;
+            background: #f8fafc;
             padding: 1rem;
-            border-radius: 5px;
+            border-radius: 10px;
             margin-bottom: 0.5rem;
-            border-left: 3px solid #3498db;
+            border-left: 3px solid #4f46e5;
+            border: 1px solid #e2e8f0;
+            border-left: 3px solid #4f46e5;
+            transition: background 0.2s ease;
+        }
+
+        .audit-log:hover {
+            background: #f1f5f9;
         }
         
         .audit-log .timestamp {
-            color: #666;
-            font-size: 0.9rem;
+            color: #94a3b8;
+            font-size: 0.82rem;
         }
         
         .audit-details {
             margin-top: 0.5rem;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
+            color: #64748b;
         }
         
         .audit-changes {
             background: #fff;
-            padding: 0.5rem;
-            border-radius: 3px;
+            padding: 0.6rem 0.85rem;
+            border-radius: 8px;
             margin-top: 0.5rem;
-            border: 1px solid #ddd;
+            border: 1px solid #e2e8f0;
+            font-size: 0.82rem;
         }
         
         .backup-item {
@@ -94,15 +128,41 @@
             justify-content: space-between;
             align-items: center;
             padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 5px;
+            background: #f8fafc;
+            border-radius: 10px;
             margin-bottom: 0.5rem;
+            border: 1px solid #e2e8f0;
+            transition: background 0.2s ease;
+        }
+
+        .backup-item:hover {
+            background: #f1f5f9;
+        }
+
+        .stat-item {
+            padding: 0.4rem 0;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+
+        .stat-item strong {
+            color: #1e293b;
+        }
+
+        .security-stats {
+            color: #475569;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .security-stats strong {
+            color: #1e293b;
         }
         
         .progress-bar {
             width: 100%;
-            height: 20px;
-            background: #f0f0f0;
+            height: 6px;
+            background: #e2e8f0;
             border-radius: 10px;
             overflow: hidden;
             margin: 1rem 0;
@@ -110,19 +170,21 @@
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
+            background: linear-gradient(90deg, #4f46e5, #10b981);
+            border-radius: 10px;
             transition: width 0.3s ease;
         }
         
         .access-denied {
             text-align: center;
             padding: 3rem;
-            color: #666;
+            color: #64748b;
         }
         
         .access-denied h2 {
-            color: #e74c3c;
+            color: #ef4444;
             margin-bottom: 1rem;
+            font-weight: 700;
         }
     </style>
 </head>

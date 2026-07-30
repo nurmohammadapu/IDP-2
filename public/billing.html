@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Billing - Hospital Management System</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         .bill-items {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 5px;
+            background: #f8fafc;
+            padding: 1.25rem;
+            border-radius: 10px;
             margin: 1rem 0;
+            border: 1px solid #e2e8f0;
         }
         
         .bill-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem;
+            padding: 0.65rem 0.85rem;
             background: white;
-            margin: 0.5rem 0;
-            border-radius: 3px;
-            border: 1px solid #ddd;
+            margin: 0.4rem 0;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .bill-item:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
         
         .bill-item-details {
@@ -29,35 +36,38 @@
         }
         
         .bill-item-price {
-            font-weight: bold;
-            color: #2c3e50;
+            font-weight: 700;
+            color: #1e293b;
         }
         
         .bill-summary {
-            background: #e8f4fd;
-            padding: 1rem;
-            border-radius: 5px;
+            background: linear-gradient(135deg, #eff6ff, #e0e7ff);
+            padding: 1.25rem;
+            border-radius: 12px;
             margin-top: 1rem;
+            border: 1px solid #c7d2fe;
         }
         
         .summary-row {
             display: flex;
             justify-content: space-between;
             margin: 0.5rem 0;
+            font-size: 0.9rem;
         }
         
         .summary-row.total {
-            font-weight: bold;
+            font-weight: 700;
             font-size: 1.1rem;
-            border-top: 2px solid #3498db;
-            padding-top: 0.5rem;
+            border-top: 2px solid #4f46e5;
+            padding-top: 0.6rem;
+            color: #1e293b;
         }
         
         .test-selector {
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
             padding: 0.5rem;
         }
         
@@ -66,7 +76,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.5rem;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.88rem;
         }
         
         .test-option:last-child {
@@ -74,19 +85,21 @@
         }
         
         .payment-history {
-            background: #f8f9fa;
+            background: #f8fafc;
             padding: 1rem;
-            border-radius: 5px;
+            border-radius: 10px;
             margin-top: 1rem;
+            border: 1px solid #e2e8f0;
         }
         
         .payment-entry {
             display: flex;
             justify-content: space-between;
-            padding: 0.5rem;
+            padding: 0.6rem 0.85rem;
             background: white;
-            margin: 0.5rem 0;
-            border-radius: 3px;
+            margin: 0.4rem 0;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
         }
         
         .modal-large {
@@ -96,21 +109,23 @@
         .bill-view-container {
             max-height: 70vh;
             overflow-y: auto;
+            padding: 1.5rem 1.75rem;
         }
         
         .bill-detail-section {
-            margin-bottom: 2rem;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 5px;
+            margin-bottom: 1.75rem;
+            padding: 1.25rem;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
         }
         
         .bill-detail-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #2c3e50;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1e293b;
             margin-bottom: 1rem;
-            border-bottom: 2px solid #3498db;
+            border-bottom: 2px solid #4f46e5;
             padding-bottom: 0.5rem;
         }
         
@@ -126,52 +141,62 @@
         }
         
         .detail-label {
-            font-weight: bold;
-            color: #555;
+            font-weight: 600;
+            color: #64748b;
             margin-bottom: 0.25rem;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         
         .detail-value {
-            color: #333;
-            padding: 0.5rem;
+            color: #1e293b;
+            padding: 0.55rem 0.75rem;
             background: white;
-            border-radius: 3px;
-            border: 1px solid #ddd;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
         }
 
         .search-container {
             margin-bottom: 1rem;
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
         }
 
-        .search-input {
+        .search-container .search-input {
             flex: 1;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
+            padding: 0.7rem 1rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            width: auto;
         }
 
-        .search-input:focus {
+        .search-container .search-input:focus {
             outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
         .clear-search {
-            padding: 0.75rem 1rem;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            padding: 0.7rem 1.25rem;
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.25s ease;
         }
 
         .clear-search:hover {
-            background: #5a6268;
+            background: #e2e8f0;
+            color: #334155;
         }
     </style>
 </head>
