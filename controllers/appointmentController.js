@@ -36,13 +36,27 @@ async function getById(req, res, id) {
 }
 
 const { createPatient } = require("../models/patientModel")
+const { getAuthenticatedUser } = require("../middleware/authMiddleware")
+const { getDB } = require("../db")
 
 async function create(req, res) {
   try {
     let { patient_id, doctor_id, appointment_date, appointment_time, notes, new_patient } = req.body
 
-    // If no patient_id but new_patient data is provided, create the patient first
-    if (!patient_id && new_patient) {
+    const user = await getAuthenticatedUser(req)
+    if (user && user.role === "patient") {
+      const db = getDB()
+      const patient = await new Promise((resolve) => {
+        db.get("SELECT id FROM patients WHERE user_id = ?", [user.id], (err, row) => resolve(row))
+      })
+      if (patient) {
+        patient_id = patient.id
+      } else {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "Patient profile not found for this account" }))
+        return
+      }
+    } else if (!patient_id && new_patient) {
       const { name, age, gender, contact, address } = new_patient
       if (!name || !age || !gender || !contact || !address) {
         res.writeHead(400, { "Content-Type": "application/json" })

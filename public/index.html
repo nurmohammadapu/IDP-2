@@ -58,7 +58,18 @@
                 if (response.ok) {
                     showToast('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/dashboard.html';
+                        const role = data.user.role;
+                        if (role === 'admin') {
+                            window.location.href = '/dashboard.html';
+                        } else if (role === 'doctor') {
+                            window.location.href = '/doctor-dashboard.html';
+                        } else if (role === 'patient') {
+                            window.location.href = '/patient-dashboard.html';
+                        } else if (role === 'receptionist') {
+                            window.location.href = '/receptionist-dashboard.html';
+                        } else {
+                            window.location.href = '/dashboard.html';
+                        }
                     }, 1000);
                 } else {
                     showToast(data.error || 'Login failed', 'error');
@@ -84,7 +95,19 @@
             try {
                 const response = await fetch('/api/auth/me');
                 if (response.ok) {
-                    window.location.href = '/dashboard.html';
+                    const data = await response.json();
+                    const role = data.user.role;
+                    if (role === 'admin') {
+                        window.location.href = '/dashboard.html';
+                    } else if (role === 'doctor') {
+                        window.location.href = '/doctor-dashboard.html';
+                    } else if (role === 'patient') {
+                        window.location.href = '/patient-dashboard.html';
+                    } else if (role === 'receptionist') {
+                        window.location.href = '/receptionist-dashboard.html';
+                    } else {
+                        window.location.href = '/dashboard.html';
+                    }
                 }
             } catch (error) {
                 // User not logged in, stay on login page

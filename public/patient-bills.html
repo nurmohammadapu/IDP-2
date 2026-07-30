@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bills - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Patient Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="patient-dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patient-appointments.html">📅 My Appointments</a></li>
+                <li><a href="patient-bills.html" class="active">💰 My Bills</a></li>
+                <li><a href="settings.html">👤 My Profile</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>My Bills & Invoices</h1>
+            </header>
+
+            <div class="content-section">
+                <div class="table-container">
+                    <table id="billsTable">
+                        <thead>
+                            <tr>
+                                <th>Bill ID</th>
+                                <th>Billing Date</th>
+                                <th>Payment Method</th>
+                                <th>Total Amount</th>
+                                <th>Paid Amount</th>
+                                <th>Due Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="loading">Loading bills...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUser = null;
+
+        async function loadBills() {
+            try {
+                const response = await fetch('/api/patients/dashboard');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayBills(data.bills || []);
+                } else {
+                    showToast('Failed to load bills', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading bills', 'error');
+            }
+        }
+
+        function displayBills(bills) {
+            const tbody = document.querySelector('#billsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (bills.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data">No bills found</td></tr>';
+                return;
+            }
+            
+            bills.forEach(bill => {
+                const dueAmount = parseFloat(bill.total_amount) - parseFloat(bill.paid_amount || 0);
+                const status = dueAmount <= 0 ? 'paid' : 'pending';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>BILL-${String(bill.id).padStart(6, '0')}</td>
+                    <td>${formatDate(bill.billing_date)}</td>
+                    <td>${bill.payment_method || 'Cash'}</td>
+                    <td>৳${parseFloat(bill.total_amount).toFixed(2)}</td>
+                    <td>৳${parseFloat(bill.paid_amount || 0).toFixed(2)}</td>
+                    <td>৳${dueAmount.toFixed(2)}</td>
+                    <td><span class="status status-${status}">${status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewBill(${bill.id})">View Invoice</button>
+                        ${dueAmount > 0 ? `<button class="btn btn-sm btn-success" onclick="payBill(${bill.id})">Pay Now</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function viewBill(billId) {
+            window.open(`patient-bill-view.html?id=${billId}`, '_blank');
+        }
+
+        function payBill(billId) {
+            window.location.href = `patient-payment.html?bill=${billId}`;
+        }
+
+        // Inheriting global checkAuthAndLoadUser from scripts.js
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadBills();
+        });
+    </script>
+</body>
+</html>

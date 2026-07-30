@@ -14,6 +14,7 @@ function connectDB() {
         return;
       }
       console.log("✅ Connected to SQLite database");
+      db.run("PRAGMA foreign_keys = ON;");
 
       db.serialize(() => {
         createTables()
@@ -42,6 +43,7 @@ function createTables() {
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role TEXT NOT NULL,
+        status TEXT DEFAULT 'active',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -56,6 +58,7 @@ function createTables() {
 
       `CREATE TABLE IF NOT EXISTS patients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE,
         name TEXT NOT NULL,
         age INTEGER NOT NULL,
         gender TEXT NOT NULL,
@@ -66,11 +69,13 @@ function createTables() {
         blood_group TEXT,
         allergies TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
 
       `CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE,
         unique_id TEXT UNIQUE,
         name TEXT NOT NULL,
         specialty TEXT NOT NULL,
@@ -79,7 +84,8 @@ function createTables() {
         visit_fee REAL DEFAULT 0,
         schedule TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
 
       `CREATE TABLE IF NOT EXISTS appointments (
@@ -214,7 +220,13 @@ function runMigrations() {
       { table: 'users', name: 'bio', type: 'TEXT' }
     ];
 
-    const allColumns = [...doctorColumns, ...userProfileColumns];
+    const extraColumns = [
+      { table: 'users', name: 'status', type: "TEXT DEFAULT 'active'" },
+      { table: 'patients', name: 'user_id', type: 'INTEGER' },
+      { table: 'doctors', name: 'user_id', type: 'INTEGER' }
+    ];
+
+    const allColumns = [...doctorColumns, ...userProfileColumns, ...extraColumns];
 
     let processed = 0;
     const checkCompletion = () => {
@@ -243,7 +255,9 @@ function createUniqueIndexes() {
     const indexes = [
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_contact ON patients(contact)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_unique_id ON doctors(unique_id)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_contact ON doctors(contact)"
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_contact ON doctors(contact)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)"
     ];
 
     let completed = 0;
@@ -273,33 +287,68 @@ function createDefaultUsers() {
         email: "admin@hospital.com",
         password: crypto.createHash("sha256").update("admin123").digest("hex"),
         role: "admin",
+        status: "active"
       },
       {
         name: "Dr. John Smith",
         email: "doctor@hospital.com",
         password: crypto.createHash("sha256").update("doctor123").digest("hex"),
         role: "doctor",
+        status: "active"
       },
       {
         name: "Reception Staff",
         email: "reception@hospital.com",
         password: crypto.createHash("sha256").update("reception123").digest("hex"),
         role: "receptionist",
+        status: "active"
       },
       {
         name: "John Doe",
         email: "patient@hospital.com",
         password: crypto.createHash("sha256").update("patient123").digest("hex"),
         role: "patient",
+        status: "active"
       },
     ];
 
     let completed = 0;
     const total = defaultUsers.length;
 
+    const setupLinks = () => {
+      db.get("SELECT id FROM users WHERE email = 'doctor@hospital.com'", [], (err, doctorUser) => {
+        if (doctorUser) {
+          db.run(
+            `INSERT OR IGNORE INTO doctors (user_id, unique_id, name, specialty, contact, room_number, visit_fee, schedule)
+             VALUES (?, 'DOC999', 'Dr. John Smith', 'General Medicine', '01700000000', 'Room 101', 500, 'Sat-Wed: 9AM-5PM')`,
+            [doctorUser.id],
+            (err) => {
+              if (err) console.error("Error creating default doctor link:", err);
+              db.run("UPDATE doctors SET user_id = ? WHERE contact = '01700000000' AND user_id IS NULL", [doctorUser.id]);
+            }
+          );
+        }
+
+        db.get("SELECT id FROM users WHERE email = 'patient@hospital.com'", [], (err, patientUser) => {
+          if (patientUser) {
+            db.run(
+              `INSERT OR IGNORE INTO patients (user_id, name, age, gender, contact, address, medical_history)
+               VALUES (?, 'John Doe', 30, 'male', '01700000111', 'Dhaka, Bangladesh', 'None')`,
+              [patientUser.id],
+              (err) => {
+                if (err) console.error("Error creating default patient link:", err);
+                db.run("UPDATE patients SET user_id = ? WHERE contact = '01700000111' AND user_id IS NULL", [patientUser.id]);
+              }
+            );
+          }
+          resolve();
+        });
+      });
+    };
+
     defaultUsers.forEach((user) => {
-      const sql = `INSERT OR IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`;
-      db.run(sql, [user.name, user.email, user.password, user.role], (err) => {
+      const sql = `INSERT OR IGNORE INTO users (name, email, password, role, status) VALUES (?, ?, ?, ?, ?)`;
+      db.run(sql, [user.name, user.email, user.password, user.role, user.status], (err) => {
         if (err) {
           console.error("Error creating default user:", err);
           reject(err);
@@ -307,7 +356,7 @@ function createDefaultUsers() {
         }
         completed++;
         if (completed === total) {
-          resolve();
+          setupLinks();
         }
       });
     });

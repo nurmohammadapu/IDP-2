@@ -19,10 +19,9 @@ async function register(req, res) {
       return
     }
 
-    const validRoles = ["admin", "doctor", "receptionist", "patient"]
-    if (!validRoles.includes(role)) {
+    if (role !== "patient") {
       res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Invalid role selected" }))
+      res.end(JSON.stringify({ error: "Only patient registration is allowed publicly" }))
       return
     }
 
@@ -33,14 +32,77 @@ async function register(req, res) {
       return
     }
 
-    const userId = await createUser({ name, email, password, role })
+    // Default status: pending for doctor/receptionist, active for admin/patient
+    const status = (role === "doctor" || role === "receptionist") ? "pending" : "active";
+
+    const userId = await createUser({ name, email, password, role, status })
+    const db = getDB()
+
+    try {
+      if (role === "doctor") {
+        const { specialty, phone, room_number, visit_fee } = req.body
+        if (!specialty || !phone) {
+          await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
+          res.writeHead(400, { "Content-Type": "application/json" })
+          res.end(JSON.stringify({ error: "Specialty and contact phone number are required for doctors" }))
+          return
+        }
+        await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO doctors (user_id, name, specialty, contact, room_number, visit_fee, schedule)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [userId, name, specialty, phone, room_number || "", visit_fee || 0, "Not scheduled yet"],
+            function (err) {
+              if (err) reject(err)
+              else resolve()
+            }
+          )
+        })
+      } else if (role === "patient") {
+        const { age, gender, phone, address } = req.body
+        if (!age || !gender || !phone || !address) {
+          await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
+          res.writeHead(400, { "Content-Type": "application/json" })
+          res.end(JSON.stringify({ error: "Age, gender, contact phone, and address are required for patients" }))
+          return
+        }
+        await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [userId, name, age, gender, phone, address, "None"],
+            function (err) {
+              if (err) reject(err)
+              else resolve()
+            }
+          )
+        })
+      }
+
+      // Update phone & address on users profile columns too
+      if (req.body.phone || req.body.address) {
+        await updateUserProfile(userId, {
+          name,
+          phone: req.body.phone,
+          address: req.body.address,
+          gender: req.body.gender || "",
+          date_of_birth: req.body.date_of_birth || ""
+        })
+      }
+    } catch (dbError) {
+      // Rollback user creation on linked table errors (e.g. unique constraint on contact number)
+      await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Linked record error: " + dbError.message }))
+      return
+    }
 
     res.writeHead(201, { "Content-Type": "application/json" })
     res.end(
       JSON.stringify({
         message: "User registered successfully",
         userId,
-        user: { id: userId, name, email, role },
+        user: { id: userId, name, email, role, status },
       }),
     )
   } catch (error) {
@@ -71,6 +133,13 @@ async function login(req, res) {
     if (!isValidPassword) {
       res.writeHead(401, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Invalid credentials" }))
+      return
+    }
+
+    // Check account status
+    if (user.status && user.status !== "active") {
+      res.writeHead(403, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Your account is pending approval by an administrator." }))
       return
     }
 

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="users.html" class="active">🔑 User Management</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>User Management</h1>
+                <div class="header-actions">
+                    <input type="text" id="searchUsers" placeholder="Search users..." style="padding: 6px 10px; font-size: 14px; margin-right: 10px;">
+                    <button id="addUserBtn" class="btn btn-primary">Add User</button>
+                </div>
+            </header>
+
+            <div class="dashboard-content" style="padding: 0; margin-bottom: 2rem;">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="statTotalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #ef4444;">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-info">
+                            <h3 id="statPendingApprovals">0</h3>
+                            <p>Pending Approvals</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👨‍⚕️</div>
+                        <div class="stat-info">
+                            <h3 id="statActiveDoctors">0</h3>
+                            <p>Active Doctors</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👤</div>
+                        <div class="stat-info">
+                            <h3 id="statActivePatients">0</h3>
+                            <p>Active Patients</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div class="table-container">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="loading">Loading users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New User</h2>
+                <span class="close" onclick="closeModal('addUserModal')">&times;</span>
+            </div>
+            <form id="addUserForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="addName">Full Name *</label>
+                        <input type="text" id="addName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="addEmail">Email Address *</label>
+                        <input type="email" id="addEmail" name="email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="addPassword">Password *</label>
+                        <input type="password" id="addPassword" name="password" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="addRole">Role *</label>
+                        <select id="addRole" name="role" required>
+                            <option value="">Select role...</option>
+                            <option value="admin">Admin</option>
+                            <option value="doctor">Doctor</option>
+                            <option value="receptionist">Receptionist</option>
+                            <option value="patient">Patient</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="addStatus">Status *</label>
+                    <select id="addStatus" name="status" required>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Dynamic fields -->
+                <div id="addPhoneGroup" class="form-group" style="display: none;">
+                    <label for="addPhone">Phone Number *</label>
+                    <input type="tel" id="addPhone" name="phone">
+                </div>
+
+                <div id="addDoctorSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="addSpecialty">Specialty *</label>
+                        <input type="text" id="addSpecialty" name="specialty">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="addRoom">Room Number</label>
+                            <input type="text" id="addRoom" name="room_number">
+                        </div>
+                        <div class="form-group">
+                            <label for="addFee">Visit Fee (BDT)</label>
+                            <input type="number" id="addFee" name="visit_fee" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="addPatientSection" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="addAge">Age *</label>
+                            <input type="number" id="addAge" name="age" min="0" max="150">
+                        </div>
+                        <div class="form-group">
+                            <label for="addGender">Gender *</label>
+                            <select id="addGender" name="gender">
+                                <option value="">Select...</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="addAddress">Full Address *</label>
+                        <textarea id="addAddress" name="address" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addUserModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit User Details</h2>
+                <span class="close" onclick="closeModal('editUserModal')">&times;</span>
+            </div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label for="editName">Full Name *</label>
+                    <input type="text" id="editName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email Address *</label>
+                    <input type="email" id="editEmail" name="email" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editRole">Role *</label>
+                        <select id="editRole" name="role" required>
+                            <option value="admin">Admin</option>
+                            <option value="doctor">Doctor</option>
+                            <option value="receptionist">Receptionist</option>
+                            <option value="patient">Patient</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editStatus">Status *</label>
+                        <select id="editStatus" name="status" required>
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let allUsers = [];
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    allUsers = data;
+                    updateStats();
+                    filterAndDisplay();
+                } else {
+                    showToast(data.error || 'Failed to load users', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading users', 'error');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalUsers').textContent = allUsers.length;
+            document.getElementById('statPendingApprovals').textContent = allUsers.filter(u => u.status === 'pending').length;
+            document.getElementById('statActiveDoctors').textContent = allUsers.filter(u => u.role === 'doctor' && u.status === 'active').length;
+            document.getElementById('statActivePatients').textContent = allUsers.filter(u => u.role === 'patient' && u.status === 'active').length;
+        }
+
+        function filterAndDisplay() {
+            const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+            const filtered = allUsers.filter(user => {
+                return user.name.toLowerCase().includes(searchTerm) || 
+                       user.email.toLowerCase().includes(searchTerm) || 
+                       user.role.toLowerCase().includes(searchTerm) ||
+                       user.status.toLowerCase().includes(searchTerm);
+            });
+            displayUsers(filtered);
+        }
+
+        function displayUsers(users) {
+            const tbody = document.querySelector('#usersTable tbody');
+            tbody.innerHTML = '';
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No users found</td></tr>';
+                return;
+            }
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                const isSelf = user.email === 'admin@hospital.com'; // prevent deleting default superadmin
+                
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td><span class="user-role-badge role-${user.role}">${user.role}</span></td>
+                    <td><span class="status status-${user.status}">${user.status}</span></td>
+                    <td>${formatDate(user.created_at)}</td>
+                    <td>
+                        ${user.status === 'pending' ? 
+                            `<button class="btn btn-sm btn-success" onclick="approveUser(${user.id})">Approve</button>` : 
+                            ''
+                        }
+                        <button class="btn btn-sm btn-secondary" onclick="editUser(${user.id})">Edit</button>
+                        ${!isSelf ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function approveUser(id) {
+            try {
+                const response = await fetch(`/api/admin/users/${id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'active' })
+                });
+                if (response.ok) {
+                    showToast('User approved successfully!', 'success');
+                    loadUsers();
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to approve user', 'error');
+                }
+            } catch (error) {
+                showToast('Network error approving user', 'error');
+            }
+        }
+
+        function editUser(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editName').value = user.name;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editRole').value = user.role;
+            document.getElementById('editStatus').value = user.status;
+            
+            document.getElementById('editUserModal').style.display = 'block';
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user? All linked records will be deleted.')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/users/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    showToast('User deleted successfully!', 'success');
+                    loadUsers();
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to delete user', 'error');
+                }
+            } catch (error) {
+                showToast('Network error deleting user', 'error');
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // Inheriting global checkAuthAndLoadUser from scripts.js
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadUsers();
+
+            document.getElementById('searchUsers').addEventListener('input', filterAndDisplay);
+            
+            // Add user button trigger modal
+            document.getElementById('addUserBtn').addEventListener('click', () => {
+                document.getElementById('addUserForm').reset();
+                document.getElementById('addPhoneGroup').style.display = 'none';
+                document.getElementById('addDoctorSection').style.display = 'none';
+                document.getElementById('addPatientSection').style.display = 'none';
+                document.getElementById('addUserModal').style.display = 'block';
+            });
+
+            // Toggle dynamic forms in Add User modal
+            document.getElementById('addRole').addEventListener('change', (e) => {
+                const role = e.target.value;
+                const phoneGroup = document.getElementById('addPhoneGroup');
+                const docSection = document.getElementById('addDoctorSection');
+                const patSection = document.getElementById('addPatientSection');
+                
+                const phone = document.getElementById('addPhone');
+                const specialty = document.getElementById('addSpecialty');
+                const age = document.getElementById('addAge');
+                const gender = document.getElementById('addGender');
+                const address = document.getElementById('addAddress');
+
+                if (role) {
+                    phoneGroup.style.display = 'block';
+                    phone.required = true;
+                } else {
+                    phoneGroup.style.display = 'none';
+                    phone.required = false;
+                }
+
+                if (role === 'doctor') {
+                    docSection.style.display = 'block';
+                    patSection.style.display = 'none';
+                    specialty.required = true;
+                    age.required = false;
+                    gender.required = false;
+                    address.required = false;
+                } else if (role === 'patient') {
+                    docSection.style.display = 'none';
+                    patSection.style.display = 'block';
+                    specialty.required = false;
+                    age.required = true;
+                    gender.required = true;
+                    address.required = true;
+                } else {
+                    docSection.style.display = 'none';
+                    patSection.style.display = 'none';
+                    specialty.required = false;
+                    age.required = false;
+                    gender.required = false;
+                    address.required = false;
+                }
+            });
+
+            // Save new user
+            document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const userData = Object.fromEntries(formData);
+                
+                try {
+                    const response = await fetch('/api/admin/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                    
+                    if (response.ok) {
+                        showToast('User created successfully!', 'success');
+                        closeModal('addUserModal');
+                        loadUsers();
+                    } else {
+                        const data = await response.json();
+                        showToast(data.error || 'Failed to create user', 'error');
+                    }
+                } catch (error) {
+                    showToast('Network error creating user', 'error');
+                }
+            });
+
+            // Save edit user
+            document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('editUserId').value;
+                const formData = new FormData(e.target);
+                const userData = Object.fromEntries(formData);
+                
+                try {
+                    const response = await fetch(`/api/admin/users/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                    
+                    if (response.ok) {
+                        showToast('User updated successfully!', 'success');
+                        closeModal('editUserModal');
+                        loadUsers();
+                    } else {
+                        const data = await response.json();
+                        showToast(data.error || 'Failed to update user', 'error');
+                    }
+                } catch (error) {
+                    showToast('Network error updating user', 'error');
+                }
+            });
+
+            // Close modals when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('addUserModal')) closeModal('addUserModal');
+                if (e.target === document.getElementById('editUserModal')) closeModal('editUserModal');
+            });
+        });
+    </script>
+    <style>
+        /* Custom Styles for User Badges */
+        .user-role-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .role-admin { background: #fee2e2; color: #991b1b; }
+        .role-doctor { background: #e0e7ff; color: #3730a3; }
+        .role-patient { background: #d1fae5; color: #065f46; }
+        .role-receptionist { background: #fef3c7; color: #92400e; }
+    </style>
+</body>
+</html>

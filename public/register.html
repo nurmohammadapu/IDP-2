@@ -277,27 +277,37 @@
                     <div class="error-message" id="confirmPasswordError"></div>
                 </div>
                 
+                <input type="hidden" name="role" value="patient">
+
+                <!-- Patient Registration Fields -->
                 <div class="form-group">
-                    <label>Role *</label>
-                    <div class="role-selector">
-                        <!-- <div class="role-option">
-                            <input type="radio" id="doctor" name="role" value="doctor" required>
-                            <label for="doctor">👨‍⚕️ Doctor</label>
-                        </div> -->
-                        <div class="role-option">
-                            <input type="radio" id="receptionist" name="role" value="receptionist" required>
-                            <label for="receptionist">👩‍💼 Receptionist</label>
-                        </div>
-                        <!-- <div class="role-option">
-                            <input type="radio" id="patient" name="role" value="patient" required>
-                            <label for="patient">👤 Patient</label>
-                        </div> -->
-                        <div class="role-option">
-                            <input type="radio" id="admin" name="role" value="admin">
-                            <label for="admin">👑 Admin</label>
-                        </div>
+                    <label for="phone">Phone/Contact Number *</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="01XXXXXXXXX" required>
+                    <div class="error-message" id="phoneError"></div>
+                </div>
+
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label for="age">Age *</label>
+                        <input type="number" id="age" name="age" class="form-control" placeholder="e.g. 28" min="0" max="150" required>
+                        <div class="error-message" id="ageError"></div>
                     </div>
-                    <div class="error-message" id="roleError"></div>
+                    <div class="form-group">
+                        <label for="gender">Gender *</label>
+                        <select id="gender" name="gender" class="form-control" required>
+                            <option value="">Select...</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="error-message" id="genderError"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Full Address *</label>
+                    <textarea id="address" name="address" class="form-control" placeholder="e.g. Dhaka, Bangladesh" rows="2" required></textarea>
+                    <div class="error-message" id="addressError"></div>
                 </div>
                 
                 <button type="submit" class="btn btn-primary" id="registerBtn">
@@ -367,11 +377,26 @@
                 showError('confirmPasswordError', 'Passwords do not match');
                 isValid = false;
             }
-            
-            // Role validation
-            const role = document.querySelector('input[name="role"]:checked');
-            if (!role) {
-                showError('roleError', 'Please select a role');
+            // Patient fields validation
+            const phone = document.getElementById('phone').value.trim();
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const address = document.getElementById('address').value.trim();
+
+            if (!phone) {
+                showError('phoneError', 'Phone/contact number is required');
+                isValid = false;
+            }
+            if (!age) {
+                showError('ageError', 'Age is required');
+                isValid = false;
+            }
+            if (!gender) {
+                showError('genderError', 'Gender is required');
+                isValid = false;
+            }
+            if (!address) {
+                showError('addressError', 'Address is required');
                 isValid = false;
             }
             
@@ -439,13 +464,19 @@
                 console.log('Response data:', data);
                 
                 if (response.ok) {
-                    showSuccess('Account created successfully! Redirecting to login...');
-                    showToast('Registration successful!', 'success');
+                    // Check if registration was for a doctor or receptionist (which starts as pending)
+                    if (userData.role === 'doctor' || userData.role === 'receptionist') {
+                        showSuccess('Account registered successfully! Waiting for Admin approval before login...');
+                        showToast('Registration successful! Waiting for approval.', 'info');
+                    } else {
+                        showSuccess('Account created successfully! Redirecting to login...');
+                        showToast('Registration successful!', 'success');
+                    }
                     
-                    // Redirect to login after 2 seconds
+                    // Redirect to login after 2.5 seconds
                     setTimeout(() => {
                         window.location.href = 'index.html';
-                    }, 2000);
+                    }, 2500);
                 } else {
                     showError('generalError', data.error || 'Registration failed');
                     showToast(data.error || 'Registration failed', 'error');
@@ -479,11 +510,21 @@
             try {
                 const response = await fetch('/api/auth/me');
                 if (response.ok) {
-                    // User is already logged in, redirect to dashboard
-                    window.location.href = 'dashboard.html';
+                    const data = await response.json();
+                    const role = data.user.role;
+                    if (role === 'admin') {
+                        window.location.href = 'dashboard.html';
+                    } else if (role === 'doctor') {
+                        window.location.href = 'doctor-dashboard.html';
+                    } else if (role === 'patient') {
+                        window.location.href = 'patient-dashboard.html';
+                    } else if (role === 'receptionist') {
+                        window.location.href = 'receptionist-dashboard.html';
+                    } else {
+                        window.location.href = 'dashboard.html';
+                    }
                 }
             } catch (error) {
-                // User is not logged in, stay on register page
                 console.log('User not logged in');
             }
         });

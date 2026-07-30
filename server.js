@@ -13,6 +13,7 @@ const testRoutes = require("./routes/testRoutes")
 const billingRoutes = require("./routes/billingRoutes")
 const reportRoutes = require("./routes/reportRoutes")
 const advancedRoutes = require("./routes/advancedRoutes")
+const adminRoutes = require("./routes/adminRoutes")
 
 const PORT = process.env.PORT || 3000
 
@@ -127,6 +128,8 @@ const server = http.createServer(async (req, res) => {
       await reportRoutes(req, res)
     } else if (pathname.startsWith("/api/advanced")) {
       await advancedRoutes(req, res)
+    } else if (pathname.startsWith("/api/admin")) {
+      await adminRoutes(req, res)
     }
     // Static file serving
     else if (pathname === "/" || pathname === "/login") {

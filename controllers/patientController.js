@@ -1,5 +1,132 @@
 const { createPatient, getAllPatients, getPatientById, updatePatient, deletePatient, searchPatients } = require("../models/patientModel")
 const { auditAction } = require("../middleware/auditMiddleware")
+const { getAuthenticatedUser } = require("../middleware/authMiddleware")
+const { getDB } = require("../db")
+
+async function getDashboardData(req, res) {
+  try {
+    const user = await getAuthenticatedUser(req)
+    if (!user || user.role !== "patient") {
+      res.writeHead(401, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Access denied. Patient access only." }))
+      return
+    }
+
+    const db = getDB()
+
+    // Find patient record linking to this user
+    let patient = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM patients WHERE user_id = ?", [user.id], (err, row) => {
+        if (err) reject(err)
+        else resolve(row)
+      })
+    })
+
+    if (!patient) {
+      console.log(`Self-healing: Creating default patient record for user_id ${user.id}`);
+      await new Promise((resolve, reject) => {
+        db.run(
+          `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
+           VALUES (?, ?, 30, 'male', ?, ?, 'None')`,
+          [user.id, user.name, user.phone || ('017' + user.id + Math.floor(100000 + Math.random() * 900000)), user.address || 'Not specified'],
+          function (err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+      
+      // Fetch the newly created record
+      patient = await new Promise((resolve, reject) => {
+        db.get("SELECT * FROM patients WHERE user_id = ?", [user.id], (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        })
+      })
+    }
+
+    const patientId = patient.id
+
+    // Total appointments count
+    const totalAppointmentsCount = await new Promise((resolve) => {
+      db.get(
+        "SELECT COUNT(*) as count FROM appointments WHERE patient_id = ?",
+        [patientId],
+        (err, row) => resolve(row ? row.count : 0)
+      )
+    })
+
+    // Upcoming appointments count
+    const upcomingAppointmentsCount = await new Promise((resolve) => {
+      db.get(
+        "SELECT COUNT(*) as count FROM appointments WHERE patient_id = ? AND status IN ('pending', 'confirmed') AND appointment_date >= date('now')",
+        [patientId],
+        (err, row) => resolve(row ? row.count : 0)
+      )
+    })
+
+    // Total bills and pending bills
+    const billStats = await new Promise((resolve) => {
+      db.get(
+        `SELECT SUM(total_amount) as total_amount, SUM(total_amount - paid_amount) as due_amount 
+         FROM advanced_bills 
+         WHERE patient_id = ?`,
+        [patientId],
+        (err, row) => {
+          resolve({
+            totalBills: row ? (row.total_amount || 0) : 0,
+            pendingBills: row ? (row.due_amount || 0) : 0
+          })
+        }
+      )
+    })
+
+    // Appointments list (upcoming and current today/future)
+    const appointmentsList = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT a.*, d.name as doctor_name, d.specialty as doctor_specialty
+         FROM appointments a
+         JOIN doctors d ON a.doctor_id = d.id
+         WHERE a.patient_id = ? AND a.appointment_date >= date('now')
+         ORDER BY a.appointment_date ASC, a.appointment_time ASC
+         LIMIT 10`,
+        [patientId],
+        (err, rows) => {
+          if (err) reject(err)
+          else resolve(rows || [])
+        }
+      )
+    })
+
+    // Bills list
+    const billsList = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT * FROM advanced_bills WHERE patient_id = ? ORDER BY billing_date DESC LIMIT 5`,
+        [patientId],
+        (err, rows) => {
+          if (err) reject(err)
+          else resolve(rows || [])
+        }
+      )
+    })
+
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(
+      JSON.stringify({
+        totalAppointments: totalAppointmentsCount,
+        upcomingAppointments: upcomingAppointmentsCount,
+        totalBills: billStats.totalBills,
+        pendingBills: billStats.pendingBills,
+        appointments: appointmentsList,
+        bills: billsList
+      })
+    )
+  } catch (error) {
+    console.error("Patient dashboard error:", error)
+    res.writeHead(500, { "Content-Type": "application/json" })
+    res.end(JSON.stringify({ error: "Internal server error: " + error.message }))
+  }
+}
 
 async function getAll(req, res) {
   try {
@@ -155,6 +282,7 @@ async function search(req, res, query) {
     res.end(JSON.stringify({ error: "Internal server error" }))
   }
 }
+
 module.exports = {
   getAll,
   getById,
@@ -162,4 +290,5 @@ module.exports = {
   update,
   deletePatientById,
   search,
+  getDashboardData,
 }

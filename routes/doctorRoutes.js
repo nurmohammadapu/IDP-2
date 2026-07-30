@@ -1,5 +1,5 @@
 const url = require("url")
-const { getAll, getById, create, update, deleteDoctorById, search } = require("../controllers/doctorController")
+const { getAll, getById, create, update, deleteDoctorById, search, getDashboardData } = require("../controllers/doctorController")
 
 async function doctorRoutes(req, res) {
   const parsedUrl = url.parse(req.url, true)
@@ -7,7 +7,9 @@ async function doctorRoutes(req, res) {
   const method = req.method
 
   try {
-    if (pathname === "/api/doctors" && method === "GET") {
+    if (pathname === "/api/doctors/dashboard" && method === "GET") {
+      await getDashboardData(req, res)
+    } else if (pathname === "/api/doctors" && method === "GET") {
       const { search: searchQuery } = parsedUrl.query
       if (searchQuery) {
         await search(req, res, searchQuery)

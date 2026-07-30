@@ -5,11 +5,12 @@ const crypto = require("crypto");
 function createUser(userData) {
   const db = getDB();
   return new Promise((resolve, reject) => {
-    const { name, email, password, role } = userData;
+    const { name, email, password, role, status } = userData;
     const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
+    const userStatus = status || 'active';
 
-    const sql = "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, datetime('now'))";
-    db.run(sql, [name, email, hashedPassword, role], function(err) {
+    const sql = "INSERT INTO users (name, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))";
+    db.run(sql, [name, email, hashedPassword, role, userStatus], function(err) {
       if (err) {
         console.error("Database error creating user:", err);
         reject(err);
@@ -114,6 +115,71 @@ function updateUserPassword(userId, newPassword) {
   });
 }
 
+// Get all users for admin
+function getAllUsers() {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.all("SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC", [], (err, rows) => {
+      if (err) {
+        console.error("Database error getting all users:", err);
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
+// Delete user by ID
+function deleteUser(id) {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.run("DELETE FROM users WHERE id = ?", [id], function(err) {
+      if (err) {
+        console.error("Database error deleting user:", err);
+        reject(err);
+        return;
+      }
+      resolve(this.changes > 0);
+    });
+  });
+}
+
+// Update user status
+function updateUserStatus(id, status) {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.run("UPDATE users SET status = ?, updated_at = datetime('now') WHERE id = ?", [status, id], function(err) {
+      if (err) {
+        console.error("Database error updating user status:", err);
+        reject(err);
+        return;
+      }
+      resolve(this.changes > 0);
+    });
+  });
+}
+
+// Update user profile by Admin
+function updateUserByAdmin(id, userData) {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    const { name, email, role, status } = userData;
+    db.run(
+      "UPDATE users SET name = ?, email = ?, role = ?, status = ?, updated_at = datetime('now') WHERE id = ?",
+      [name, email, role, status, id],
+      function(err) {
+        if (err) {
+          console.error("Database error updating user by admin:", err);
+          reject(err);
+          return;
+        }
+        resolve(this.changes > 0);
+      }
+    );
+  });
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
@@ -121,4 +187,8 @@ module.exports = {
   verifyPassword,
   updateUserProfile,
   updateUserPassword,
+  getAllUsers,
+  deleteUser,
+  updateUserStatus,
+  updateUserByAdmin,
 };

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Appointments - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Doctor Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="doctor-dashboard.html">📊 Dashboard</a></li>
+                <li><a href="doctor-appointments.html" class="active">📅 My Appointments</a></li>
+                <li><a href="settings.html">👤 My Profile</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Manage My Appointments</h1>
+                <div class="header-actions">
+                    <select id="statusFilter" class="form-control" style="width: 180px; padding: 6px 12px; font-size: 14px;">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </header>
+
+            <div class="content-section">
+                <div class="table-container">
+                    <table id="appointmentsTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Patient Name</th>
+                                <th>Patient Contact</th>
+                                <th>Reason / Notes</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="loading">Loading appointments...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Update Status Modal -->
+    <div id="appointmentActionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="actionModalTitle">Update Appointment</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="appointmentActionForm">
+                <input type="hidden" id="appointmentId">
+                
+                <div class="form-group">
+                    <label for="appointmentStatus">Status *</label>
+                    <select id="appointmentStatus" name="status" required>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appointmentNotes">Notes/Prescription</label>
+                    <textarea id="appointmentNotes" name="notes" rows="5" placeholder="Add notes, prescription, or treatment details..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelActionBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Appointment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUser = null;
+        let allAppointments = [];
+
+        async function loadAppointments() {
+            try {
+                const response = await fetch('/api/doctors/dashboard');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Combine lists
+                    const today = data.todayAppointmentsList || [];
+                    const upcoming = data.upcomingAppointmentsList || [];
+                    
+                    // We need to fetch all if possible, or combine these two. Let's merge them
+                    const merged = [...today];
+                    upcoming.forEach(up => {
+                        if (!merged.some(m => m.id === up.id)) {
+                            merged.push(up);
+                        }
+                    });
+                    
+                    allAppointments = merged;
+                    filterAndDisplay();
+                } else {
+                    showToast('Failed to load appointments', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading appointments', 'error');
+            }
+        }
+
+        function filterAndDisplay() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const filtered = allAppointments.filter(app => {
+                return !statusFilter || app.status === statusFilter;
+            });
+            displayAppointments(filtered);
+        }
+
+        function displayAppointments(appointments) {
+            const tbody = document.querySelector('#appointmentsTable tbody');
+            tbody.innerHTML = '';
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No appointments found</td></tr>';
+                return;
+            }
+            
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(appointment.appointment_date)}</td>
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.patient_name}</td>
+                    <td>${appointment.patient_contact}</td>
+                    <td>${appointment.notes || '-'}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}', '${appointment.status}', \`${escapeJS(appointment.notes || '')}\`)">Update</button>
+                        ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? 
+                            `<button class="btn btn-sm btn-success" onclick="markCompleted(${appointment.id})">Complete</button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function escapeJS(str) {
+            return str.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        }
+
+        function updateAppointment(id, name, status, notes) {
+            document.getElementById('appointmentId').value = id;
+            document.getElementById('actionModalTitle').textContent = `Update Appointment - ${name}`;
+            document.getElementById('appointmentStatus').value = status;
+            document.getElementById('appointmentNotes').value = notes;
+            document.getElementById('appointmentActionModal').style.display = 'block';
+        }
+
+        async function markCompleted(appointmentId) {
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'completed' })
+                });
+                if (response.ok) {
+                    showToast('Appointment completed', 'success');
+                    loadAppointments();
+                } else {
+                    showToast('Failed to update status', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function saveAppointmentUpdate(data) {
+            const id = document.getElementById('appointmentId').value;
+            try {
+                const response = await fetch(`/api/appointments/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    showToast('Appointment updated successfully', 'success');
+                    document.getElementById('appointmentActionModal').style.display = 'none';
+                    loadAppointments();
+                } else {
+                    showToast('Failed to update appointment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Inheriting global checkAuthAndLoadUser from scripts.js
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthAndLoadUser();
+            loadAppointments();
+            
+            document.getElementById('statusFilter').addEventListener('change', filterAndDisplay);
+            
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('appointmentActionModal').style.display = 'none';
+            });
+            document.getElementById('cancelActionBtn').addEventListener('click', () => {
+                document.getElementById('appointmentActionModal').style.display = 'none';
+            });
+            document.getElementById('appointmentActionForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                saveAppointmentUpdate(Object.fromEntries(formData));
+            });
+        });
+    </script>
+</body>
+</html>

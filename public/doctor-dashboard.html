@@ -325,32 +325,7 @@
             }
         }
 
-        // Check authentication and load user
-        async function checkAuthAndLoadUser() {
-            try {
-                const response = await fetch('/api/auth/me');
-                if (response.ok) {
-                    const data = await response.json();
-                    currentUser = data.user;
-                    
-                    // Check if user is doctor
-                    if (currentUser.role !== 'doctor') {
-                        showToast('Access denied. Doctor access only.', 'error');
-                        setTimeout(() => {
-                            window.location.href = 'index.html';
-                        }, 2000);
-                        return;
-                    }
-                    
-                    document.getElementById('userName').textContent = `Dr. ${currentUser.name}`;
-                    document.getElementById('userEmail').textContent = currentUser.email;
-                } else {
-                    window.location.href = 'index.html';
-                }
-            } catch (error) {
-                window.location.href = 'index.html';
-            }
-        }
+        // Using global checkAuthAndLoadUser from scripts.js
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
