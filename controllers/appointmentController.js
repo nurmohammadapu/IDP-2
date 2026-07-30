@@ -20,7 +20,8 @@ async function getAll(req, res) {
 
 async function getById(req, res, id) {
   try {
-    const appointment = await getAppointmentById(id)    if (!appointment) {
+    const appointment = await getAppointmentById(id);
+       if (!appointment) {
       res.writeHead(404, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Appointment not found" }))
       return
