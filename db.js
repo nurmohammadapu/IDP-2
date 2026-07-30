@@ -194,27 +194,43 @@ function createTables() {
 
 function runMigrations() {
   return new Promise((resolve, reject) => {
-    const columnsToAdd = [
-      { name: 'unique_id', type: 'TEXT' },
-      { name: 'room_number', type: 'TEXT' },
-      { name: 'visit_fee', type: 'REAL DEFAULT 0' }
+    const doctorColumns = [
+      { table: 'doctors', name: 'unique_id', type: 'TEXT' },
+      { table: 'doctors', name: 'room_number', type: 'TEXT' },
+      { table: 'doctors', name: 'visit_fee', type: 'REAL DEFAULT 0' }
     ];
+
+    const userProfileColumns = [
+      { table: 'users', name: 'phone', type: 'TEXT' },
+      { table: 'users', name: 'address', type: 'TEXT' },
+      { table: 'users', name: 'date_of_birth', type: 'TEXT' },
+      { table: 'users', name: 'gender', type: 'TEXT' },
+      { table: 'users', name: 'blood_group', type: 'TEXT' },
+      { table: 'users', name: 'emergency_contact', type: 'TEXT' },
+      { table: 'users', name: 'emergency_contact_name', type: 'TEXT' },
+      { table: 'users', name: 'city', type: 'TEXT' },
+      { table: 'users', name: 'state', type: 'TEXT' },
+      { table: 'users', name: 'zip_code', type: 'TEXT' },
+      { table: 'users', name: 'bio', type: 'TEXT' }
+    ];
+
+    const allColumns = [...doctorColumns, ...userProfileColumns];
 
     let processed = 0;
     const checkCompletion = () => {
       processed++;
-      if (processed === columnsToAdd.length) {
+      if (processed === allColumns.length) {
         createUniqueIndexes().then(resolve).catch(reject);
       }
     };
 
-    if (columnsToAdd.length === 0) {
+    if (allColumns.length === 0) {
       createUniqueIndexes().then(resolve).catch(reject);
       return;
     }
 
-    columnsToAdd.forEach(col => {
-      db.run(`ALTER TABLE doctors ADD COLUMN ${col.name} ${col.type}`, (err) => {
+    allColumns.forEach(col => {
+      db.run(`ALTER TABLE ${col.table} ADD COLUMN ${col.name} ${col.type}`, (err) => {
         // Ignore error if column already exists
         checkCompletion();
       });

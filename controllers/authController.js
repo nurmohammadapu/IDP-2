@@ -3,6 +3,8 @@ const {
   findUserByEmail,
   findUserById,
   verifyPassword,
+  updateUserProfile,
+  updateUserPassword,
 } = require("../models/userModel")
 const crypto = require("crypto")
 const { getDB } = require("../db") 
@@ -179,9 +181,116 @@ async function getCurrentUser(req, res) {
   }
 }
 
+async function updateProfile(req, res) {
+  try {
+    const sessionId = req.cookies.sessionId;
+
+    if (!sessionId) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Not authenticated" }));
+      return;
+    }
+
+    const db = getDB();
+
+    const session = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')",
+        [sessionId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!session) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Session expired" }));
+      return;
+    }
+
+    await updateUserProfile(session.user_id, req.body);
+    const updatedUser = await findUserById(session.user_id);
+    if (updatedUser) delete updatedUser.password;
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "Profile updated successfully", user: updatedUser }));
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+}
+
+async function changePassword(req, res) {
+  try {
+    const sessionId = req.cookies.sessionId;
+
+    if (!sessionId) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Not authenticated" }));
+      return;
+    }
+
+    const db = getDB();
+
+    const session = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')",
+        [sessionId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!session) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Session expired" }));
+      return;
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Current password and new password are required" }));
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "New password must be at least 6 characters" }));
+      return;
+    }
+
+    const user = await findUserById(session.user_id);
+    const isValid = verifyPassword(currentPassword, user.password);
+
+    if (!isValid) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Current password is incorrect" }));
+      return;
+    }
+
+    await updateUserPassword(session.user_id, newPassword);
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "Password changed successfully" }));
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+}
+
 module.exports = {
   register,
   login,
   logout,
   getCurrentUser,
+  updateProfile,
+  changePassword,
 }

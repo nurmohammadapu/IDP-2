@@ -19,6 +19,7 @@
                 <li><a href="appointments.html">📅 Appointments</a></li>
                 <li><a href="billing.html">💰 Billing</a></li>
                 <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
@@ -161,12 +162,7 @@
             }, 3000);
         }
 
-        // Function to check authentication and load user info
-        function checkAuthAndLoadUser() {
-            // Placeholder for authentication check and user info loading
-            const userName = document.getElementById('userName');
-            userName.textContent = 'John Doe'; // Example user name
-        }
+        // checkAuthAndLoadUser is provided by scripts.js — it fetches the real user name from /api/auth/me
     </script>
 </body>
 </html>

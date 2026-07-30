@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Hospital Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: #0f1117;
+            color: #e2e8f0;
+        }
+
+        .app-container {
+            min-height: 100vh;
+        }
+
+        /* Enhanced Sidebar */
+        .sidebar {
+            background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+            border-right: 1px solid rgba(255,255,255,0.06);
+            width: 260px;
+        }
+
+        .sidebar-header {
+            padding: 1.75rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-menu a {
+            color: #94a3b8;
+            padding: 0.85rem 1.5rem;
+            border-radius: 0;
+            transition: all 0.25s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover {
+            color: #e2e8f0;
+            background: rgba(99, 102, 241, 0.08);
+            border-left-color: rgba(99, 102, 241, 0.3);
+            border-right: none;
+        }
+
+        .sidebar-menu a.active {
+            color: #fff;
+            background: rgba(99, 102, 241, 0.15);
+            border-left-color: #6366f1;
+            border-right: none;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding: 1rem 1.5rem;
+        }
+
+        .sidebar-footer .btn {
+            width: 100%;
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+
+        .sidebar-footer .btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            background: #0f1117;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .main-header {
+            background: rgba(26, 29, 46, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 1.5rem 2.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .main-header h1 {
+            color: #f1f5f9;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Settings Page Layout */
+        .settings-container {
+            padding: 2rem 2.5rem;
+            max-width: 1100px;
+        }
+
+        /* Profile Banner */
+        .profile-banner {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4338ca 60%, #6366f1 100%);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .profile-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: 10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .profile-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: white;
+            font-weight: 700;
+            border: 3px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+            flex-shrink: 0;
+        }
+
+        .profile-details h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.3rem;
+        }
+
+        .profile-details .profile-email {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-details .profile-role {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 0.35rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.9);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Tab Navigation */
+        .settings-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            background: rgba(26, 29, 46, 0.5);
+            padding: 0.4rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: #e2e8f0;
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .tab-btn.active {
+            color: #fff;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .tab-btn .tab-icon {
+            font-size: 1.1rem;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeSlideIn 0.4s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Settings Card */
+        .settings-card {
+            background: rgba(26, 29, 46, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .settings-card-header .card-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .card-icon.personal {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+        }
+
+        .card-icon.contact {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+        }
+
+        .card-icon.medical {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(34, 197, 94, 0.2));
+        }
+
+        .card-icon.security {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.2));
+        }
+
+        .settings-card-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .settings-card-header p {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 0.15rem;
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .settings-form-group {
+            margin-bottom: 0;
+        }
+
+        .settings-form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-form-group input,
+        .settings-form-group select,
+        .settings-form-group textarea {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(15, 17, 23, 0.6);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .settings-form-group input:focus,
+        .settings-form-group select:focus,
+        .settings-form-group textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            background: rgba(15, 17, 23, 0.8);
+        }
+
+        .settings-form-group input::placeholder,
+        .settings-form-group textarea::placeholder {
+            color: #475569;
+        }
+
+        .settings-form-group select option {
+            background: #1a1d2e;
+            color: #e2e8f0;
+        }
+
+        .settings-form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* Save Button */
+        .form-actions-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .btn-save {
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-save:active {
+            transform: translateY(0);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-cancel {
+            padding: 0.8rem 1.5rem;
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            color: #e2e8f0;
+            border-color: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Password Strength */
+        .password-strength {
+            margin-top: 0.5rem;
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: all 0.4s ease;
+            width: 0%;
+        }
+
+        .strength-weak { width: 33%; background: #ef4444; }
+        .strength-medium { width: 66%; background: #f59e0b; }
+        .strength-strong { width: 100%; background: #22c55e; }
+
+        .password-hint {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 0.4rem;
+        }
+
+        /* Toast Styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(20px);
+            font-size: 0.9rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(16, 185, 129, 0.9));
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(139, 92, 246, 0.9));
+        }
+
+        /* Success Animation */
+        @keyframes checkmark {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .save-success {
+            animation: checkmark 0.4s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .settings-container {
+                padding: 1.5rem 1rem;
+            }
+
+            .profile-banner {
+                padding: 1.5rem;
+            }
+
+            .profile-banner-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-tabs {
+                gap: 0.25rem;
+            }
+
+            .tab-btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.82rem;
+            }
+
+            .form-actions-row {
+                flex-direction: column;
+            }
+
+            .btn-save, .btn-cancel {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="patients.html">👥 Patients</a></li>
+                <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
+                <li><a href="appointments.html">📅 Appointments</a></li>
+                <li><a href="billing.html">💰 Billing</a></li>
+                <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="settings.html" class="active">⚙️ Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary">🚪 Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>⚙️ Settings</h1>
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                </div>
+            </header>
+
+            <div class="settings-container">
+                <!-- Profile Banner -->
+                <div class="profile-banner">
+                    <div class="profile-banner-content">
+                        <div class="profile-avatar" id="profileAvatar">?</div>
+                        <div class="profile-details">
+                            <h2 id="profileName">Loading...</h2>
+                            <p class="profile-email" id="profileEmail">Loading...</p>
+                            <span class="profile-role" id="profileRole">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="personal" id="tabPersonal">
+                        <span class="tab-icon">👤</span> Personal Info
+                    </button>
+                    <button class="tab-btn" data-tab="contact" id="tabContact">
+                        <span class="tab-icon">📍</span> Contact & Address
+                    </button>
+                    <button class="tab-btn" data-tab="medical" id="tabMedical">
+                        <span class="tab-icon">🏥</span> Medical Info
+                    </button>
+                    <button class="tab-btn" data-tab="security" id="tabSecurity">
+                        <span class="tab-icon">🔒</span> Security
+                    </button>
+                </div>
+
+                <!-- Personal Info Tab -->
+                <div class="tab-content active" id="personalTab">
+                    <form id="personalForm">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="card-icon personal">👤</div>
+                                <div>
+                                    <h3>Personal Information</h3>
+                                    <p>Update your personal details</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="settings-form-group">
+                                    <label for="fullName">Full Name</label>
+                                    <input type="text" id="fullName" name="name" placeholder="Enter your full name">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="email">Email Address</label>
+                                    <input type="email" id="email" name="email" placeholder="your@email.com" disabled>
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="dateOfBirth">Date of Birth</label>
+                                    <input type="date" id="dateOfBirth" name="date_of_birth">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="gender">Gender</label>
+                                    <select id="gender" name="gender">
+                                        <option value="">Select gender</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="settings-form-group full-width">
+                                    <label for="bio">Bio / Notes</label>
+                                    <textarea id="bio" name="bio" placeholder="Write a short bio or any notes about yourself..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions-row">
+                            <button type="button" class="btn-cancel" onclick="resetForm('personalForm')">Reset</button>
+                            <button type="submit" class="btn-save" id="savePersonalBtn">
+                                💾 Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Contact & Address Tab -->
+                <div class="tab-content" id="contactTab">
+                    <form id="contactForm">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="card-icon contact">📍</div>
+                                <div>
+                                    <h3>Contact Information</h3>
+                                    <p>How can we reach you?</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="settings-form-group">
+                                    <label for="phone">Phone Number</label>
+                                    <input type="tel" id="phone" name="phone" placeholder="01XXXXXXXXX">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="emergencyContactName">Emergency Contact Name</label>
+                                    <input type="text" id="emergencyContactName" name="emergency_contact_name" placeholder="Emergency contact person">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="emergencyContact">Emergency Contact Number</label>
+                                    <input type="tel" id="emergencyContact" name="emergency_contact" placeholder="01XXXXXXXXX">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="city">City</label>
+                                    <input type="text" id="city" name="city" placeholder="e.g. Dhaka">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="state">Division / State</label>
+                                    <input type="text" id="state" name="state" placeholder="e.g. Dhaka Division">
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="zipCode">Zip / Postal Code</label>
+                                    <input type="text" id="zipCode" name="zip_code" placeholder="e.g. 1205">
+                                </div>
+                                <div class="settings-form-group full-width">
+                                    <label for="address">Full Address</label>
+                                    <textarea id="address" name="address" placeholder="Enter your complete address including house number, road, area..." rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions-row">
+                            <button type="button" class="btn-cancel" onclick="resetForm('contactForm')">Reset</button>
+                            <button type="submit" class="btn-save" id="saveContactBtn">
+                                💾 Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Medical Info Tab -->
+                <div class="tab-content" id="medicalTab">
+                    <form id="medicalForm">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="card-icon medical">🏥</div>
+                                <div>
+                                    <h3>Medical Information</h3>
+                                    <p>Important health details for your records</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="settings-form-group">
+                                    <label for="bloodGroup">Blood Group</label>
+                                    <select id="bloodGroup" name="blood_group">
+                                        <option value="">Select blood group</option>
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions-row">
+                            <button type="button" class="btn-cancel" onclick="resetForm('medicalForm')">Reset</button>
+                            <button type="submit" class="btn-save" id="saveMedicalBtn">
+                                💾 Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Security Tab -->
+                <div class="tab-content" id="securityTab">
+                    <form id="securityForm">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="card-icon security">🔒</div>
+                                <div>
+                                    <h3>Change Password</h3>
+                                    <p>Ensure your account stays secure</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="settings-form-group full-width">
+                                    <label for="currentPassword">Current Password</label>
+                                    <input type="password" id="currentPassword" name="currentPassword" placeholder="Enter current password" required>
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="newPassword">New Password</label>
+                                    <input type="password" id="newPassword" name="newPassword" placeholder="Enter new password" required minlength="6">
+                                    <div class="password-strength">
+                                        <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                                    </div>
+                                    <p class="password-hint" id="passwordHint">Minimum 6 characters</p>
+                                </div>
+                                <div class="settings-form-group">
+                                    <label for="confirmNewPassword">Confirm New Password</label>
+                                    <input type="password" id="confirmNewPassword" name="confirmNewPassword" placeholder="Confirm new password" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions-row">
+                            <button type="button" class="btn-cancel" onclick="document.getElementById('securityForm').reset()">Reset</button>
+                            <button type="submit" class="btn-save" id="saveSecurityBtn">
+                                🔐 Change Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        let currentUserData = null;
+
+        // Toast
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                const tabId = btn.dataset.tab + 'Tab';
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Load user data
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (!response.ok) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                const data = await response.json();
+                currentUserData = data.user;
+
+                // Update header
+                document.getElementById('userName').textContent = currentUserData.name;
+
+                // Update banner
+                const initials = currentUserData.name
+                    .split(' ')
+                    .map(w => w.charAt(0).toUpperCase())
+                    .slice(0, 2)
+                    .join('');
+                document.getElementById('profileAvatar').textContent = initials;
+                document.getElementById('profileName').textContent = currentUserData.name;
+                document.getElementById('profileEmail').textContent = currentUserData.email;
+
+                const roleMap = {
+                    admin: '👑 Administrator',
+                    doctor: '👨‍⚕️ Doctor',
+                    receptionist: '👩‍💼 Receptionist',
+                    patient: '👤 Patient'
+                };
+                document.getElementById('profileRole').textContent = roleMap[currentUserData.role] || currentUserData.role;
+
+                // Fill forms
+                fillFormData();
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                window.location.href = '/';
+            }
+        }
+
+        // Fill form data from user
+        function fillFormData() {
+            if (!currentUserData) return;
+
+            // Personal
+            document.getElementById('fullName').value = currentUserData.name || '';
+            document.getElementById('email').value = currentUserData.email || '';
+            document.getElementById('dateOfBirth').value = currentUserData.date_of_birth || '';
+            document.getElementById('gender').value = currentUserData.gender || '';
+            document.getElementById('bio').value = currentUserData.bio || '';
+
+            // Contact
+            document.getElementById('phone').value = currentUserData.phone || '';
+            document.getElementById('emergencyContactName').value = currentUserData.emergency_contact_name || '';
+            document.getElementById('emergencyContact').value = currentUserData.emergency_contact || '';
+            document.getElementById('city').value = currentUserData.city || '';
+            document.getElementById('state').value = currentUserData.state || '';
+            document.getElementById('zipCode').value = currentUserData.zip_code || '';
+            document.getElementById('address').value = currentUserData.address || '';
+
+            // Medical
+            document.getElementById('bloodGroup').value = currentUserData.blood_group || '';
+        }
+
+        // Collect all profile data from all forms
+        function collectAllProfileData() {
+            return {
+                name: document.getElementById('fullName').value.trim(),
+                date_of_birth: document.getElementById('dateOfBirth').value,
+                gender: document.getElementById('gender').value,
+                bio: document.getElementById('bio').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                emergency_contact_name: document.getElementById('emergencyContactName').value.trim(),
+                emergency_contact: document.getElementById('emergencyContact').value.trim(),
+                city: document.getElementById('city').value.trim(),
+                state: document.getElementById('state').value.trim(),
+                zip_code: document.getElementById('zipCode').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                blood_group: document.getElementById('bloodGroup').value,
+            };
+        }
+
+        // Save profile
+        async function saveProfile(btnId) {
+            const btn = document.getElementById(btnId);
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Saving...';
+
+            try {
+                const profileData = collectAllProfileData();
+
+                const response = await fetch('/api/auth/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profileData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentUserData = data.user;
+                    showToast('✅ Profile updated successfully!', 'success');
+
+                    // Update banner
+                    const initials = currentUserData.name
+                        .split(' ')
+                        .map(w => w.charAt(0).toUpperCase())
+                        .slice(0, 2)
+                        .join('');
+                    document.getElementById('profileAvatar').textContent = initials;
+                    document.getElementById('profileName').textContent = currentUserData.name;
+                    document.getElementById('userName').textContent = currentUserData.name;
+
+                    btn.innerHTML = '✅ Saved!';
+                    btn.classList.add('save-success');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('save-success');
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    showToast(data.error || 'Failed to update profile', 'error');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast('Network error. Please try again.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Reset form to saved values
+        function resetForm(formId) {
+            fillFormData();
+            showToast('Form reset to saved values', 'info');
+        }
+
+        // Password strength checker
+        document.getElementById('newPassword').addEventListener('input', function() {
+            const val = this.value;
+            const bar = document.getElementById('passwordStrengthBar');
+            const hint = document.getElementById('passwordHint');
+
+            bar.className = 'password-strength-bar';
+
+            if (val.length === 0) {
+                bar.style.width = '0%';
+                hint.textContent = 'Minimum 6 characters';
+            } else if (val.length < 6) {
+                bar.classList.add('strength-weak');
+                hint.textContent = 'Too short — add more characters';
+            } else if (val.length < 10 || !/[A-Z]/.test(val) || !/[0-9]/.test(val)) {
+                bar.classList.add('strength-medium');
+                hint.textContent = 'Fair — try adding uppercase letters and numbers';
+            } else {
+                bar.classList.add('strength-strong');
+                hint.textContent = 'Strong password ✓';
+            }
+        });
+
+        // Change password
+        async function changePassword() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmNewPassword').value;
+
+            if (!current || !newPass || !confirm) {
+                showToast('All password fields are required', 'error');
+                return;
+            }
+
+            if (newPass !== confirm) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+
+            if (newPass.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveSecurityBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Changing...';
+
+            try {
+                const response = await fetch('/api/auth/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        currentPassword: current,
+                        newPassword: newPass
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('✅ Password changed successfully!', 'success');
+                    document.getElementById('securityForm').reset();
+                    document.getElementById('passwordStrengthBar').className = 'password-strength-bar';
+                    document.getElementById('passwordStrengthBar').style.width = '0%';
+                    document.getElementById('passwordHint').textContent = 'Minimum 6 characters';
+
+                    btn.innerHTML = '✅ Changed!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    showToast(data.error || 'Failed to change password', 'error');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast('Network error. Please try again.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Form submissions
+        document.getElementById('personalForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveProfile('savePersonalBtn');
+        });
+
+        document.getElementById('contactForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveProfile('saveContactBtn');
+        });
+
+        document.getElementById('medicalForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveProfile('saveMedicalBtn');
+        });
+
+        document.getElementById('securityForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            changePassword();
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 const url = require("url")
-const { register, login, logout, getCurrentUser } = require("../controllers/authController")
+const { register, login, logout, getCurrentUser, updateProfile, changePassword } = require("../controllers/authController")
 
 async function authRoutes(req, res) {
   const parsedUrl = url.parse(req.url, true)
@@ -15,6 +15,10 @@ async function authRoutes(req, res) {
       await logout(req, res)
     } else if (pathname === "/api/auth/me" && method === "GET") {
       await getCurrentUser(req, res)
+    } else if (pathname === "/api/auth/profile" && method === "PUT") {
+      await updateProfile(req, res)
+    } else if (pathname === "/api/auth/password" && method === "PUT") {
+      await changePassword(req, res)
     } else {
       res.writeHead(404, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Route not found" }))
@@ -27,3 +31,4 @@ async function authRoutes(req, res) {
 }
 
 module.exports = authRoutes
+
