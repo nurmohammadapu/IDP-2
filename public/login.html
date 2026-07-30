@@ -194,12 +194,7 @@
                 <h1>🏥 HMS Login</h1>
                 <p>Welcome back! Please sign in to your account</p>
             </div>
-            
-            <div class="demo-credentials">
-                <h4>Demo Credentials:</h4>
-                <p><strong>Admin:</strong> admin@hospital.com / admin123</p>
-                <p><strong>Or register</strong> a new account with any role</p>
-            </div>
+
             
             <form id="loginForm">
                 <div class="form-group">
@@ -333,12 +328,7 @@
                 console.log('User not logged in');
             }
         });
-        
-        // Auto-fill demo credentials when clicking on them
-        document.querySelector('.demo-credentials').addEventListener('click', () => {
-            document.getElementById('email').value = 'admin@hospital.com';
-            document.getElementById('password').value = 'admin123';
-        });
+
     </script>
 </body>
 </html>

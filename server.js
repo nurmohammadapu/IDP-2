@@ -91,7 +91,7 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname
   const method = req.method
 
-  console.log(`${method} ${pathname}`)
+  // console.log(`${method} ${pathname}`)
 
   // Add CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -132,8 +132,8 @@ const server = http.createServer(async (req, res) => {
       await adminRoutes(req, res)
     }
     // Static file serving
-    else if (pathname === "/" || pathname === "/login") {
-      await serveStaticFile("index.html", res)
+    else if (pathname === "/" || pathname === "/login" || pathname === "/index.html" || pathname === "/login.html") {
+      await serveStaticFile("login.html", res)
     } else if (pathname === "/register") {
       await serveStaticFile("register.html", res)
     } else if (pathname.startsWith("/")) {
@@ -155,10 +155,6 @@ async function startServer() {
     await connectDB()
     server.listen(PORT, () => {
       console.log(`🚀 Hospital Management Server running on http://localhost:${PORT}`)
-      console.log(`📝 Registration: http://localhost:${PORT}/register.html`)
-      console.log(`🔐 Login: http://localhost:${PORT}/login.html`)
-      console.log(`📊 Dashboard: http://localhost:${PORT}/dashboard.html`)
-      console.log(`⚡ Advanced Features: http://localhost:${PORT}/advanced.html`)
     })
   } catch (error) {
     console.error("Failed to start server:", error)

@@ -32,6 +32,29 @@ async function register(req, res) {
       return
     }
 
+    // Check unique phone number
+    const { phone } = req.body
+    if (phone) {
+      const db = getDB()
+      const existingPatientPhone = await new Promise((resolve, reject) => {
+        db.get("SELECT id FROM patients WHERE contact = ?", [phone], (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        })
+      })
+      const existingDoctorPhone = await new Promise((resolve, reject) => {
+        db.get("SELECT id FROM doctors WHERE contact = ?", [phone], (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        })
+      })
+      if (existingPatientPhone || existingDoctorPhone) {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "User with this phone number already exists" }))
+        return
+      }
+    }
+
     // Default status: pending for doctor/receptionist, active for admin/patient
     const status = (role === "doctor" || role === "receptionist") ? "pending" : "active";
 
@@ -60,17 +83,22 @@ async function register(req, res) {
         })
       } else if (role === "patient") {
         const { age, gender, phone, address } = req.body
-        if (!age || !gender || !phone || !address) {
+        if (!phone) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
           res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Age, gender, contact phone, and address are required for patients" }))
+          res.end(JSON.stringify({ error: "Contact phone number is required" }))
           return
         }
+
+        const finalAge = age !== undefined && age !== "" ? parseInt(age) : 0
+        const finalGender = gender || "Unspecified"
+        const finalAddress = address || "Not specified"
+
         await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [userId, name, age, gender, phone, address, "None"],
+            [userId, name, finalAge, finalGender, phone, finalAddress, "None"],
             function (err) {
               if (err) reject(err)
               else resolve()
@@ -84,8 +112,8 @@ async function register(req, res) {
         await updateUserProfile(userId, {
           name,
           phone: req.body.phone,
-          address: req.body.address,
-          gender: req.body.gender || "",
+          address: req.body.address || "Not specified",
+          gender: req.body.gender || "Unspecified",
           date_of_birth: req.body.date_of_birth || ""
         })
       }

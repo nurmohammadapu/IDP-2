@@ -286,29 +286,7 @@
                     <div class="error-message" id="phoneError"></div>
                 </div>
 
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div class="form-group">
-                        <label for="age">Age *</label>
-                        <input type="number" id="age" name="age" class="form-control" placeholder="e.g. 28" min="0" max="150" required>
-                        <div class="error-message" id="ageError"></div>
-                    </div>
-                    <div class="form-group">
-                        <label for="gender">Gender *</label>
-                        <select id="gender" name="gender" class="form-control" required>
-                            <option value="">Select...</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                        </select>
-                        <div class="error-message" id="genderError"></div>
-                    </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="address">Full Address *</label>
-                    <textarea id="address" name="address" class="form-control" placeholder="e.g. Dhaka, Bangladesh" rows="2" required></textarea>
-                    <div class="error-message" id="addressError"></div>
-                </div>
                 
                 <button type="submit" class="btn btn-primary" id="registerBtn">
                     Create Account
@@ -319,7 +297,7 @@
             </form>
             
             <div class="auth-footer">
-                <p>Already have an account? <a href="index.html">Sign In</a></p>
+                <p>Already have an account? <a href="login.html">Sign In</a></p>
             </div>
         </div>
     </div>
@@ -379,24 +357,9 @@
             }
             // Patient fields validation
             const phone = document.getElementById('phone').value.trim();
-            const age = document.getElementById('age').value;
-            const gender = document.getElementById('gender').value;
-            const address = document.getElementById('address').value.trim();
 
             if (!phone) {
                 showError('phoneError', 'Phone/contact number is required');
-                isValid = false;
-            }
-            if (!age) {
-                showError('ageError', 'Age is required');
-                isValid = false;
-            }
-            if (!gender) {
-                showError('genderError', 'Gender is required');
-                isValid = false;
-            }
-            if (!address) {
-                showError('addressError', 'Address is required');
                 isValid = false;
             }
             
@@ -475,11 +438,18 @@
                     
                     // Redirect to login after 2.5 seconds
                     setTimeout(() => {
-                        window.location.href = 'index.html';
+                        window.location.href = 'login.html';
                     }, 2500);
                 } else {
-                    showError('generalError', data.error || 'Registration failed');
-                    showToast(data.error || 'Registration failed', 'error');
+                    const errMsg = data.error || 'Registration failed';
+                    if (errMsg.toLowerCase().includes('phone') || errMsg.toLowerCase().includes('contact')) {
+                        showError('phoneError', errMsg);
+                    } else if (errMsg.toLowerCase().includes('email')) {
+                        showError('emailError', errMsg);
+                    } else {
+                        showError('generalError', errMsg);
+                    }
+                    showToast(errMsg, 'error');
                 }
             } catch (error) {
                 console.error('Registration error:', error);
