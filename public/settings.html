@@ -480,7 +480,7 @@
             <header class="main-header">
                 <h1>⚙️ Settings</h1>
                 <div class="user-info">
-                    <span id="userName">Loading...</span>
+                    <span id="headerUserName">Loading...</span>
                 </div>
             </header>
 
@@ -732,7 +732,7 @@
                 currentUserData = data.user;
 
                 // Update header
-                document.getElementById('userName').textContent = currentUserData.name;
+                document.getElementById('headerUserName').textContent = currentUserData.name;
 
                 // Update banner
                 const initials = currentUserData.name

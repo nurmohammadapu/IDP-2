@@ -11,6 +11,8 @@ async function appointmentRoutes(req, res) {
       await AppointmentController.getAll(req, res)
     } else if (pathname === "/api/appointments" && method === "POST") {
       await AppointmentController.create(req, res)
+    } else if (pathname === "/api/appointments/slots" && method === "GET") {
+      await AppointmentController.getAvailableSlots(req, res, parsedUrl.query)
     } else if (pathname.match(/^\/api\/appointments\/\d+$/) && method === "GET") {
       const id = pathname.split("/")[3]
       await AppointmentController.getById(req, res, id)

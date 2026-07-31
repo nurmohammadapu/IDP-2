@@ -21,6 +21,7 @@ function connectDB() {
           .then(() => runMigrations())
           .then(() => createDefaultUsers())
           .then(() => seedDatabase())
+          .then(() => syncUserTables())
           .then(() => {
             console.log("✅ Database setup complete");
             resolve();
@@ -96,6 +97,7 @@ function createTables() {
         appointment_time TEXT NOT NULL,
         status TEXT DEFAULT 'pending',
         notes TEXT,
+        serial_number INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
@@ -223,7 +225,8 @@ function runMigrations() {
     const extraColumns = [
       { table: 'users', name: 'status', type: "TEXT DEFAULT 'active'" },
       { table: 'patients', name: 'user_id', type: 'INTEGER' },
-      { table: 'doctors', name: 'user_id', type: 'INTEGER' }
+      { table: 'doctors', name: 'user_id', type: 'INTEGER' },
+      { table: 'appointments', name: 'serial_number', type: 'INTEGER DEFAULT 0' }
     ];
 
     const allColumns = [...doctorColumns, ...userProfileColumns, ...extraColumns];
@@ -252,26 +255,43 @@ function runMigrations() {
 
 function createUniqueIndexes() {
   return new Promise((resolve) => {
-    const indexes = [
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_contact ON patients(contact)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_unique_id ON doctors(unique_id)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_contact ON doctors(contact)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)"
-    ];
+    // First, clean up any duplicate phone numbers in users table to prevent UNIQUE constraint failures during migration
+    db.run(`
+      UPDATE users
+      SET phone = phone || '-' || id
+      WHERE id IN (
+        SELECT u1.id
+        FROM users u1
+        JOIN users u2 ON u1.phone = u2.phone AND u1.id > u2.id
+        WHERE u1.phone IS NOT NULL AND u1.phone != ''
+      )
+    `, (cleanupErr) => {
+      if (cleanupErr) {
+        console.error("Warning: Error cleaning up duplicate user phone numbers:", cleanupErr);
+      }
 
-    let completed = 0;
-    if (indexes.length === 0) return resolve();
+      const indexes = [
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_contact ON patients(contact)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_unique_id ON doctors(unique_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_contact ON doctors(contact)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL AND phone != ''"
+      ];
 
-    indexes.forEach(sql => {
-      db.run(sql, (err) => {
-        if (err) {
-          console.warn("Migration warning (index creation):", err.message);
-        }
-        completed++;
-        if (completed === indexes.length) {
-          resolve();
-        }
+      let completed = 0;
+      if (indexes.length === 0) return resolve();
+
+      indexes.forEach(sql => {
+        db.run(sql, (err) => {
+          if (err) {
+            console.warn("Migration warning (index creation):", err.message);
+          }
+          completed++;
+          if (completed === indexes.length) {
+            resolve();
+          }
+        });
       });
     });
   });
@@ -410,6 +430,55 @@ function seedDatabase() {
         });
 
         console.log("✅ Seeding complete");
+        resolve();
+      });
+    });
+  });
+}
+
+function syncUserTables() {
+  return new Promise((resolve) => {
+    db.serialize(() => {
+      // Back-sync phone from patients/doctors to users if null
+      db.run(`
+        UPDATE users
+        SET phone = (SELECT contact FROM patients WHERE patients.user_id = users.id)
+        WHERE (phone IS NULL OR phone = '') AND EXISTS (SELECT 1 FROM patients WHERE patients.user_id = users.id AND contact IS NOT NULL AND contact != '')
+      `, (err) => {
+        if (err) console.error("Error back-syncing patient contacts to users:", err);
+      });
+
+      db.run(`
+        UPDATE users
+        SET phone = (SELECT contact FROM doctors WHERE doctors.user_id = users.id)
+        WHERE (phone IS NULL OR phone = '') AND EXISTS (SELECT 1 FROM doctors WHERE doctors.user_id = users.id AND contact IS NOT NULL AND contact != '')
+      `, (err) => {
+        if (err) console.error("Error back-syncing doctor contacts to users:", err);
+      });
+
+      // Sync patient records with user profile updates
+      db.run(`
+        UPDATE patients
+        SET 
+          name = COALESCE((SELECT name FROM users WHERE users.id = patients.user_id), name),
+          gender = COALESCE((SELECT gender FROM users WHERE users.id = patients.user_id), gender),
+          address = COALESCE((SELECT address FROM users WHERE users.id = patients.user_id), address),
+          emergency_contact = COALESCE((SELECT emergency_contact FROM users WHERE users.id = patients.user_id), emergency_contact),
+          blood_group = COALESCE((SELECT blood_group FROM users WHERE users.id = patients.user_id), blood_group)
+        WHERE user_id IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE users.id = patients.user_id)
+      `, (err) => {
+        if (err) console.error("Error syncing patient records on startup:", err);
+      });
+
+      // Sync doctor records with user profile updates
+      db.run(`
+        UPDATE doctors
+        SET
+          name = COALESCE((SELECT name FROM users WHERE users.id = doctors.user_id), name),
+          contact = COALESCE((SELECT phone FROM users WHERE users.id = doctors.user_id), contact)
+        WHERE user_id IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE users.id = doctors.user_id)
+      `, (err) => {
+        if (err) console.error("Error syncing doctor records on startup:", err);
         resolve();
       });
     });

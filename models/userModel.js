@@ -93,7 +93,59 @@ function updateUserProfile(userId, profileData) {
         reject(err);
         return;
       }
-      resolve(this.changes);
+      
+      const changesCount = this.changes;
+
+      // Sync changes to patients/doctors tables depending on role
+      db.get("SELECT role FROM users WHERE id = ?", [userId], (err, user) => {
+        if (!err && user && user.role === 'patient') {
+          // Calculate age
+          let age = 30; // fallback default
+          if (date_of_birth) {
+            const birthDate = new Date(date_of_birth);
+            const difference = Date.now() - birthDate.getTime();
+            const ageDate = new Date(difference);
+            age = Math.abs(ageDate.getUTCFullYear() - 1970);
+          }
+          
+          db.run(
+            `UPDATE patients SET 
+               name = COALESCE(?, name),
+               age = ?,
+               gender = ?,
+               contact = ?,
+               address = ?,
+               emergency_contact = ?,
+               blood_group = ?,
+               updated_at = datetime('now')
+             WHERE user_id = ?`,
+            [name, age, gender || 'Unspecified', phone, address || 'Not specified', emergency_contact || '', blood_group || '', userId],
+            (err2) => {
+              if (err2) {
+                console.error("Error syncing to patients table:", err2);
+              }
+              resolve(changesCount);
+            }
+          );
+        } else if (!err && user && user.role === 'doctor') {
+          db.run(
+            `UPDATE doctors SET 
+               name = COALESCE(?, name),
+               contact = ?,
+               updated_at = datetime('now')
+             WHERE user_id = ?`,
+            [name, phone, userId],
+            (err2) => {
+              if (err2) {
+                console.error("Error syncing to doctors table:", err2);
+              }
+              resolve(changesCount);
+            }
+          );
+        } else {
+          resolve(changesCount);
+        }
+      });
     });
   });
 }
@@ -180,9 +232,29 @@ function updateUserByAdmin(id, userData) {
   });
 }
 
+// Find a user by their email address or phone number
+function findUserByEmailOrPhone(identifier) {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.get(
+      "SELECT * FROM users WHERE email = ? OR phone = ?",
+      [identifier, identifier],
+      (err, row) => {
+        if (err) {
+          console.error("Database error finding user by email or phone:", err);
+          reject(err);
+          return;
+        }
+        resolve(row);
+      }
+    );
+  });
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
+  findUserByEmailOrPhone,
   findUserById,
   verifyPassword,
   updateUserProfile,

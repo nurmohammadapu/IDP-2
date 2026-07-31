@@ -3,10 +3,10 @@ const { getDB } = require("../db")
 function createAppointment(appointmentData) {
   return new Promise((resolve, reject) => {
     const db = getDB()
-    const { patient_id, doctor_id, appointment_date, appointment_time, notes } = appointmentData
+    const { patient_id, doctor_id, appointment_date, appointment_time, notes, serial_number } = appointmentData
 
-    const sql = `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, notes) VALUES (?, ?, ?, ?, ?)`
-    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, notes || ""], function(err) {
+    const sql = `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, notes, serial_number) VALUES (?, ?, ?, ?, ?, ?)`
+    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, notes || "", serial_number || 0], function(err) {
       if (err) {
         reject(err)
         return
@@ -59,14 +59,14 @@ function getAppointmentById(id) {
 function updateAppointment(id, appointmentData) {
   return new Promise((resolve, reject) => {
     const db = getDB()
-    const { patient_id, doctor_id, appointment_date, appointment_time, status, notes } = appointmentData
+    const { patient_id, doctor_id, appointment_date, appointment_time, status, notes, serial_number } = appointmentData
 
     const sql = `
       UPDATE appointments
-      SET patient_id = ?, doctor_id = ?, appointment_date = ?, appointment_time = ?, status = ?, notes = ?
+      SET patient_id = ?, doctor_id = ?, appointment_date = ?, appointment_time = ?, status = ?, notes = ?, serial_number = ?
       WHERE id = ?
     `
-    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, status, notes, id], function(err) {
+    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, status, notes, serial_number || 0, id], function(err) {
       if (err) {
         reject(err)
         return

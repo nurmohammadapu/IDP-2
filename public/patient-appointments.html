@@ -42,6 +42,7 @@
                         <thead>
                             <tr>
                                 <th>Date</th>
+                                <th>Serial #</th>
                                 <th>Time</th>
                                 <th>Doctor</th>
                                 <th>Specialty</th>
@@ -84,19 +85,7 @@
                     <div class="form-group">
                         <label for="appointmentTime">Preferred Time *</label>
                         <select id="appointmentTime" name="appointment_time" required>
-                            <option value="">Select time...</option>
-                            <option value="09:00">09:00 AM</option>
-                            <option value="09:30">09:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="14:00">02:00 PM</option>
-                            <option value="14:30">02:30 PM</option>
-                            <option value="15:00">03:00 PM</option>
-                            <option value="15:30">03:30 PM</option>
-                            <option value="16:00">04:00 PM</option>
-                            <option value="16:30">04:30 PM</option>
+                            <option value="">Select doctor & date first...</option>
                         </select>
                     </div>
                 </div>
@@ -136,12 +125,22 @@
             }
         }
 
+        function formatTime12(time24) {
+            if (!time24) return '-';
+            const [hStr, mStr] = time24.split(':');
+            let h = parseInt(hStr, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (h === 0) h = 12;
+            return `${String(h).padStart(2, '0')}:${mStr} ${ampm}`;
+        }
+
         function displayAppointments(appointments) {
             const tbody = document.querySelector('#appointmentsTable tbody');
             tbody.innerHTML = '';
             
             if (appointments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No appointments found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data">No appointments found</td></tr>';
                 return;
             }
             
@@ -149,7 +148,8 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${formatDate(appointment.appointment_date)}</td>
-                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.serial_number ? `#${appointment.serial_number}` : '-'}</td>
+                    <td>${formatTime12(appointment.appointment_time)}</td>
                     <td>${appointment.doctor_name}</td>
                     <td>${appointment.doctor_specialty}</td>
                     <td>${appointment.notes || '-'}</td>
@@ -176,7 +176,11 @@
                     doctors.forEach(d => {
                         const opt = document.createElement('option');
                         opt.value = d.id;
-                        opt.textContent = `Dr. ${d.name} - ${d.specialty}`;
+                        let displayName = d.name;
+                        if (!displayName.toLowerCase().startsWith('dr')) {
+                            displayName = `Dr. ${displayName}`;
+                        }
+                        opt.textContent = `${displayName} - ${d.specialty}`;
                         select.appendChild(opt);
                     });
                 }
@@ -215,8 +219,54 @@
             loadAppointments();
             loadDoctors();
             
+            const doctorSelect = document.getElementById('doctorSelect');
+            const appointmentDate = document.getElementById('appointmentDate');
+            const appointmentTime = document.getElementById('appointmentTime');
+
+            async function updateAvailableSlots() {
+                const doctorId = doctorSelect.value;
+                const date = appointmentDate.value;
+
+                if (!doctorId || !date) {
+                    appointmentTime.innerHTML = '<option value="">Select doctor & date first...</option>';
+                    return;
+                }
+
+                appointmentTime.innerHTML = '<option value="">Loading slots...</option>';
+
+                try {
+                    const response = await fetch(`/api/appointments/slots?doctor_id=${doctorId}&date=${date}`);
+                    const slots = await response.json();
+
+                    if (response.ok) {
+                        appointmentTime.innerHTML = '<option value="">Select time...</option>';
+                        slots.forEach(slot => {
+                            const opt = document.createElement('option');
+                            opt.value = slot.time;
+                            if (slot.isBooked) {
+                                opt.textContent = `${slot.display} - [Booked]`;
+                                opt.disabled = true;
+                            } else {
+                                opt.textContent = `${slot.display} - [Serial #${slot.serial}]`;
+                            }
+                            appointmentTime.appendChild(opt);
+                        });
+                    } else {
+                        appointmentTime.innerHTML = '<option value="">Error loading slots</option>';
+                        showToast(slots.error || 'Failed to load slots', 'error');
+                    }
+                } catch (error) {
+                    appointmentTime.innerHTML = '<option value="">Error loading slots</option>';
+                    showToast('Network error loading slots', 'error');
+                }
+            }
+
+            doctorSelect.addEventListener('change', updateAvailableSlots);
+            appointmentDate.addEventListener('change', updateAvailableSlots);
+            
             document.getElementById('bookAppointmentBtn').addEventListener('click', () => {
                 document.getElementById('appointmentDate').min = new Date().toISOString().split('T')[0];
+                document.getElementById('appointmentTime').innerHTML = '<option value="">Select doctor & date first...</option>';
                 document.getElementById('appointmentModal').style.display = 'block';
             });
             

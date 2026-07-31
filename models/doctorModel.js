@@ -65,14 +65,30 @@ function updateDoctor(id, doctorData) {
 function deleteDoctor(id) {
   const db = getDB()
   return new Promise((resolve, reject) => {
-    db.run("DELETE FROM doctors WHERE id = ?", [id], function(err) {
+    db.get("SELECT user_id FROM doctors WHERE id = ?", [id], (err, row) => {
       if (err) {
-        reject(err)
-        return
+        reject(err);
+        return;
       }
-      resolve(this.changes > 0)
-    })
-  })
+      const userId = row ? row.user_id : null;
+      db.run("DELETE FROM doctors WHERE id = ?", [id], function(err2) {
+        if (err2) {
+          reject(err2);
+          return;
+        }
+        if (userId) {
+          db.run("DELETE FROM users WHERE id = ?", [userId], (err3) => {
+            if (err3) {
+              console.error("Error deleting linked doctor user:", err3);
+            }
+            resolve(this.changes > 0);
+          });
+        } else {
+          resolve(this.changes > 0);
+        }
+      });
+    });
+  });
 }
 
 function searchDoctors(query) {

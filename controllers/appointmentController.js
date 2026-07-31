@@ -39,6 +39,107 @@ const { createPatient } = require("../models/patientModel")
 const { getAuthenticatedUser } = require("../middleware/authMiddleware")
 const { getDB } = require("../db")
 
+function parseTimeStr(timeStr, ampm) {
+  let parts = timeStr.split(':');
+  let hours = parseInt(parts[0], 10);
+  let minutes = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+  
+  if (ampm.toUpperCase() === 'PM' && hours < 12) {
+    hours += 12;
+  } else if (ampm.toUpperCase() === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  return { hours, minutes };
+}
+
+function parseScheduleTimes(scheduleStr) {
+  if (!scheduleStr || scheduleStr.includes("Not scheduled yet")) {
+    return { start: { hours: 9, minutes: 0 }, end: { hours: 17, minutes: 0 } };
+  }
+  
+  // Sanitize the schedule string: replace 'o'/'O' in decimals/minutes
+  let str = scheduleStr.replace(/(\d+[\.:])[oO]{2}/g, '$100')
+                       .replace(/(\d+[\.:])[oO]/g, '$10')
+                       .replace(/\./g, ':'); // convert decimal dots to colons
+  
+  // Find all times in the format "7:00", "7", "9PM", "9:00 PM"
+  const regex = /(\d+(?::\d+)?)\s*(AM|PM|P\.M|A\.M)?/gi;
+  const matches = [];
+  let match;
+  while ((match = regex.exec(str)) !== null) {
+    matches.push({
+      time: match[1],
+      ampm: match[2] ? match[2].replace(/\./g, '').toUpperCase() : null
+    });
+  }
+  
+  if (matches.length < 2) {
+    return { start: { hours: 9, minutes: 0 }, end: { hours: 17, minutes: 0 } };
+  }
+  
+  let start = matches[0];
+  let end = matches[1];
+  
+  // If start time does not have AM/PM, but end time does, inherit it
+  if (!start.ampm && end.ampm) {
+    const startVal = parseFloat(start.time.replace(':', '.'));
+    const endVal = parseFloat(end.time.replace(':', '.'));
+    if (end.ampm === 'PM') {
+      if (startVal > endVal && startVal < 12) {
+        start.ampm = 'AM';
+      } else {
+        start.ampm = 'PM';
+      }
+    } else {
+      start.ampm = 'AM';
+    }
+  }
+  
+  // Default if missing
+  if (!start.ampm) start.ampm = 'AM';
+  if (!end.ampm) end.ampm = 'PM';
+  
+  const startObj = parseTimeStr(start.time, start.ampm);
+  const endObj = parseTimeStr(end.time, end.ampm);
+  return { start: startObj, end: endObj };
+}
+
+function generateSlots(scheduleStr) {
+  const { start, end } = parseScheduleTimes(scheduleStr);
+  const slots = [];
+  let currentHour = start.hours;
+  let currentMinute = start.minutes;
+  
+  const endTotalMinutes = end.hours * 60 + end.minutes;
+  
+  while (true) {
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    if (currentTotalMinutes >= endTotalMinutes) {
+      break;
+    }
+    
+    const hh = String(currentHour).padStart(2, '0');
+    const mm = String(currentMinute).padStart(2, '0');
+    const time24 = `${hh}:${mm}`;
+    
+    const displayHour = currentHour % 12 === 0 ? 12 : currentHour % 12;
+    const ampm = currentHour >= 12 ? 'PM' : 'AM';
+    const displayTime = `${String(displayHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')} ${ampm}`;
+    
+    slots.push({
+      time: time24,
+      display: displayTime
+    });
+    
+    currentMinute += 10;
+    if (currentMinute >= 60) {
+      currentHour += Math.floor(currentMinute / 60);
+      currentMinute = currentMinute % 60;
+    }
+  }
+  return slots;
+}
+
 async function create(req, res) {
   try {
     let { patient_id, doctor_id, appointment_date, appointment_time, notes, new_patient } = req.body
@@ -72,16 +173,51 @@ async function create(req, res) {
       return
     }
 
+    const db = getDB()
+
+    // 1. Check if the slot is already booked for this doctor on this date
+    const alreadyBooked = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT id FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND appointment_time = ? AND status != 'cancelled'",
+        [doctor_id, appointment_date, appointment_time],
+        (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        }
+      )
+    })
+
+    if (alreadyBooked) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "This time slot is already booked for this doctor." }))
+      return
+    }
+
+    // 2. Fetch doctor's schedule to compute serial number
+    const doctor = await new Promise((resolve) => {
+      db.get("SELECT schedule FROM doctors WHERE id = ?", [doctor_id], (err, row) => resolve(row))
+    })
+
+    let serialNumber = 0
+    if (doctor) {
+      const slots = generateSlots(doctor.schedule)
+      const index = slots.findIndex(s => s.time === appointment_time)
+      if (index !== -1) {
+        serialNumber = index + 1
+      }
+    }
+
     const appointmentId = await createAppointment({
       patient_id,
       doctor_id,
       appointment_date,
       appointment_time,
       notes,
+      serial_number: serialNumber,
     })
 
     res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id }))
+    res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id, serialNumber }))
   } catch (error) {
     console.error("Create appointment error:", error)
     if (error.message && (error.message.includes("UNIQUE constraint failed: patients.contact") || error.message.includes("patients.contact"))) {
@@ -96,12 +232,52 @@ async function create(req, res) {
 
 async function update(req, res, id) {
   try {
-    const { patient_id, doctor_id, appointment_date, appointment_time, status, notes } = req.body
+    const db = getDB()
+    const existing = await new Promise((resolve) => {
+      db.get("SELECT * FROM appointments WHERE id = ?", [id], (err, row) => resolve(row))
+    })
 
-    if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Patient, doctor, date, and time are required" }))
+    if (!existing) {
+      res.writeHead(404, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Appointment not found" }))
       return
+    }
+
+    const patient_id = req.body.patient_id !== undefined ? req.body.patient_id : existing.patient_id
+    const doctor_id = req.body.doctor_id !== undefined ? req.body.doctor_id : existing.doctor_id
+    const appointment_date = req.body.appointment_date !== undefined ? req.body.appointment_date : existing.appointment_date
+    const appointment_time = req.body.appointment_time !== undefined ? req.body.appointment_time : existing.appointment_time
+    const status = req.body.status !== undefined ? req.body.status : existing.status
+    const notes = req.body.notes !== undefined ? req.body.notes : existing.notes
+    
+    let serial_number = existing.serial_number
+    if (doctor_id !== existing.doctor_id || appointment_date !== existing.appointment_date || appointment_time !== existing.appointment_time) {
+      const alreadyBooked = await new Promise((resolve) => {
+        db.get(
+          "SELECT id FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND appointment_time = ? AND status != 'cancelled' AND id != ?",
+          [doctor_id, appointment_date, appointment_time, id],
+          (err, row) => resolve(row)
+        )
+      })
+
+      if (alreadyBooked) {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "This time slot is already booked for this doctor." }))
+        return
+      }
+
+      const doctor = await new Promise((resolve) => {
+        db.get("SELECT schedule FROM doctors WHERE id = ?", [doctor_id], (err, row) => resolve(row))
+      })
+
+      serial_number = 0
+      if (doctor) {
+        const slots = generateSlots(doctor.schedule)
+        const index = slots.findIndex(s => s.time === appointment_time)
+        if (index !== -1) {
+          serial_number = index + 1
+        }
+      }
     }
 
     await updateAppointment(id, {
@@ -111,6 +287,7 @@ async function update(req, res, id) {
       appointment_time,
       status,
       notes,
+      serial_number
     })
 
     res.writeHead(200, { "Content-Type": "application/json" })
@@ -134,10 +311,63 @@ async function deleteAppointmentById(req, res, id) {
   }
 }
 
+async function getAvailableSlots(req, res, query) {
+  try {
+    const { doctor_id, date } = query
+
+    if (!doctor_id || !date) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "doctor_id and date are required" }))
+      return
+    }
+
+    const db = getDB()
+    const doctor = await new Promise((resolve) => {
+      db.get("SELECT schedule FROM doctors WHERE id = ?", [doctor_id], (err, row) => resolve(row))
+    })
+
+    if (!doctor) {
+      res.writeHead(404, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Doctor not found" }))
+      return
+    }
+
+    const allSlots = generateSlots(doctor.schedule)
+
+    const bookedAppointments = await new Promise((resolve, reject) => {
+      db.all(
+        "SELECT appointment_time FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND status != 'cancelled'",
+        [doctor_id, date],
+        (err, rows) => {
+          if (err) reject(err)
+          else resolve(rows || [])
+        }
+      )
+    })
+
+    const bookedTimes = new Set(bookedAppointments.map(a => a.appointment_time))
+
+    const slotsWithStatus = allSlots.map((slot, index) => ({
+      time: slot.time,
+      display: slot.display,
+      serial: index + 1,
+      isBooked: bookedTimes.has(slot.time)
+    }))
+
+    res.writeHead(200, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(slotsWithStatus))
+  } catch (error) {
+    console.error("Get available slots error:", error)
+    res.writeHead(500, { "Content-Type": "application/json" })
+    res.end(JSON.stringify({ error: "Internal server error" }))
+  }
+}
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
   deleteAppointmentById,
+  getAvailableSlots,
 }

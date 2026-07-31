@@ -29,13 +29,12 @@
         </nav>
 
         <main class="main-content">
-        <header class="main-header">
-            <h1>Doctor Management</h1>
-            <div class="header-actions">
-                <input type="text" id="searchDoctors" placeholder="Search doctors..." style="padding: 6px 10px; font-size: 14px; margin-right: 10px;">
-                <button id="addDoctorBtn" class="btn btn-primary">Add Doctor</button>
-            </div>
-        </header>
+            <header class="main-header">
+                <h1>Doctor Management</h1>
+                <div class="header-actions">
+                    <input type="text" id="searchDoctors" placeholder="Search doctors..." style="padding: 6px 10px; font-size: 14px;">
+                </div>
+            </header>
 
 
             <div class="content-section">
@@ -104,9 +103,24 @@
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="doctorSchedule">Schedule</label>
-                    <textarea id="doctorSchedule" name="schedule" rows="4" placeholder="e.g., Mon-Fri: 9:00 AM - 5:00 PM"></textarea>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="doctorScheduleDays">Days *</label>
+                        <select id="doctorScheduleDays" name="schedule_days" required>
+                            <option value="Sat-Thu">Sat-Thu</option>
+                            <option value="Mon-Fri">Mon-Fri</option>
+                            <option value="Everyday">Everyday</option>
+                            <option value="Sat-Wed">Sat-Wed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="doctorStartTime">Start Time *</label>
+                        <input type="time" id="doctorStartTime" name="start_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="doctorEndTime">End Time *</label>
+                        <input type="time" id="doctorEndTime" name="end_time" required>
+                    </div>
                 </div>
                 
                 <div class="form-actions">
@@ -174,9 +188,6 @@
         checkAuthAndLoadUser();
         loadDoctors();
 
- 
-        document.getElementById('addDoctorBtn').addEventListener('click', addDoctor);
-
         // Search input event to filter doctors list
         document.getElementById('searchDoctors').addEventListener('input', function () {
             const searchTerm = this.value.toLowerCase();
@@ -206,6 +217,30 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const doctorData = Object.fromEntries(formData);
+            
+            const formatTime12 = (time24) => {
+                if (!time24) return '';
+                const [hStr, mStr] = time24.split(':');
+                let h = parseInt(hStr, 10);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12;
+                if (h === 0) h = 12;
+                return `${String(h).padStart(2, '0')}:${mStr} ${ampm}`;
+            };
+            
+            const daysVal = document.getElementById('doctorScheduleDays').value;
+            const startTimeVal = document.getElementById('doctorStartTime').value;
+            const endTimeVal = document.getElementById('doctorEndTime').value;
+            
+            const start12 = formatTime12(startTimeVal);
+            const end12 = formatTime12(endTimeVal);
+            
+            doctorData.schedule = `${daysVal}: ${start12} - ${end12}`;
+            
+            delete doctorData.schedule_days;
+            delete doctorData.start_time;
+            delete doctorData.end_time;
+            
             saveDoctor(doctorData);
         });
 
@@ -217,13 +252,7 @@
         });
     });
 
-        // Add doctor
-        function addDoctor() {
-            currentDoctorId = null;
-            document.getElementById('modalTitle').textContent = 'Add Doctor';
-            document.getElementById('doctorForm').reset();
-            document.getElementById('doctorModal').style.display = 'block';
-        }
+
 
         // Edit doctor
         function editDoctor(id) {
@@ -238,7 +267,62 @@
             document.getElementById('doctorContact').value = doctor.contact;
             document.getElementById('doctorRoomNumber').value = doctor.room_number || '';
             document.getElementById('doctorVisitFee').value = doctor.visit_fee || '';
-            document.getElementById('doctorSchedule').value = doctor.schedule || '';
+            
+            let days = 'Everyday';
+            let startTime24 = '09:00';
+            let endTime24 = '17:00';
+            
+            if (doctor.schedule) {
+                const parts = doctor.schedule.split(':');
+                if (parts.length > 1) {
+                    days = parts[0].trim();
+                }
+                
+                const timePart = parts.slice(1).join(':') || parts[0];
+                const regex = /(\d+(?::\d+)?)\s*(AM|PM|P\.M|A\.M)?/gi;
+                const matches = [];
+                let match;
+                let cleanTimePart = timePart.replace(/(\d+[\.:])[oO]{2}/g, '$100')
+                                             .replace(/(\d+[\.:])[oO]/g, '$10')
+                                             .replace(/\./g, ':');
+                
+                while ((match = regex.exec(cleanTimePart)) !== null) {
+                    matches.push({
+                        time: match[1],
+                        ampm: match[2] ? match[2].replace(/\./g, '').toUpperCase() : null
+                    });
+                }
+                
+                if (matches.length >= 2) {
+                    let startMatch = matches[0];
+                    let endMatch = matches[1];
+                    
+                    if (!startMatch.ampm && endMatch.ampm) {
+                        const startVal = parseFloat(startMatch.time.replace(':', '.'));
+                        const endVal = parseFloat(endMatch.time.replace(':', '.'));
+                        startMatch.ampm = (endMatch.ampm === 'PM' && startVal < endVal) ? 'PM' : 'AM';
+                    }
+                    if (!startMatch.ampm) startMatch.ampm = 'AM';
+                    if (!endMatch.ampm) endMatch.ampm = 'PM';
+                    
+                    const convertTo24 = (timeStr, ampm) => {
+                        const tParts = timeStr.split(':');
+                        let h = parseInt(tParts[0], 10);
+                        const m = tParts.length > 1 ? parseInt(tParts[1], 10) : 0;
+                        if (ampm === 'PM' && h < 12) h += 12;
+                        if (ampm === 'AM' && h === 12) h = 0;
+                        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    };
+                    
+                    startTime24 = convertTo24(startMatch.time, startMatch.ampm);
+                    endTime24 = convertTo24(endMatch.time, endMatch.ampm);
+                }
+            }
+            
+            document.getElementById('doctorScheduleDays').value = days;
+            document.getElementById('doctorStartTime').value = startTime24;
+            document.getElementById('doctorEndTime').value = endTime24;
+            
             document.getElementById('doctorModal').style.display = 'block';
         }
 

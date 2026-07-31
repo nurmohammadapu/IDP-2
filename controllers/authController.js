@@ -1,6 +1,7 @@
 const {
   createUser,
   findUserByEmail,
+  findUserByEmailOrPhone,
   findUserById,
   verifyPassword,
   updateUserProfile,
@@ -150,7 +151,7 @@ async function login(req, res) {
       return
     }
 
-    const user = await findUserByEmail(email)
+    const user = await findUserByEmailOrPhone(email)
     if (!user) {
       res.writeHead(401, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Invalid credentials" }))

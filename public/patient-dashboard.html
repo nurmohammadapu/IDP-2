@@ -263,7 +263,6 @@
                     <td><span class="status status-${status}">${status}</span></td>
                     <td>
                         <button class="btn btn-sm btn-info" onclick="viewBill(${bill.id})">View</button>
-                        ${dueAmount > 0 ? `<button class="btn btn-sm btn-success" onclick="payBill(${bill.id})">Pay</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -293,7 +292,11 @@
             doctors.forEach(doctor => {
                 const option = document.createElement('option');
                 option.value = doctor.id;
-                option.textContent = `Dr. ${doctor.name} - ${doctor.specialty}`;
+                let displayName = doctor.name;
+                if (!displayName.toLowerCase().startsWith('dr')) {
+                    displayName = `Dr. ${displayName}`;
+                }
+                option.textContent = `${displayName} - ${doctor.specialty}`;
                 doctorSelect.appendChild(option);
             });
         }
@@ -332,13 +335,20 @@
         }
 
         // View bill
-        function viewBill(billId) {
-            window.open(`patient-bill-view.html?id=${billId}`, '_blank');
-        }
-
-        // Pay bill
-        function payBill(billId) {
-            window.location.href = `patient-payment.html?bill=${billId}`;
+        async function viewBill(billId) {
+            try {
+                const response = await fetch(`/api/billing/advanced/${billId}/pdf`);
+                if (response.ok) {
+                    const htmlContent = await response.text();
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(htmlContent);
+                    newWindow.document.close();
+                } else {
+                    showToast('Failed to load invoice', 'error');
+                }
+            } catch (error) {
+                showToast('Network error loading invoice', 'error');
+            }
         }
 
         // Save appointment

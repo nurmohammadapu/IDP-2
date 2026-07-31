@@ -461,6 +461,35 @@ function generateBillPDFContent(bill) {
             font-weight: bold;
         }
         
+        .no-print-banner {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            padding: 12px 24px;
+            text-align: right;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+        
+        .no-print-banner button {
+            padding: 8px 16px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: background 0.2s;
+        }
+        
+        .no-print-banner button:hover {
+            background: #4338ca;
+        }
+        
         @media print {
             body { 
                 margin: 0; 
@@ -470,10 +499,16 @@ function generateBillPDFContent(bill) {
                 border: none;
                 border-radius: 0;
             }
+            .no-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="no-print-banner no-print">
+        <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
     <div class="watermark">HOSPITAL BILL</div>
     
     <div class="bill-container">
