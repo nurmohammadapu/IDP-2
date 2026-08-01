@@ -301,15 +301,15 @@
                 </div>
             </div>
 
-             Test Selection 
-<div class="form-group">
+             <!-- Test Selection -->
+<div class="form-group" style="position: relative;">
     <label for="testSearch">Select Tests</label>
     <input type="text" id="testSearch" placeholder="Search tests by name" autocomplete="off" />
     <div id="testDropdown" class="dropdown-list"></div>
 </div>
 
-             Manual Items 
-            <div class="form-group">
+             <!-- Manual Items -->
+            <div class="form-group" id="manualItemsContainer">
                 <label>Manual Items</label>
                 <div class="form-row">
                     <input type="text" id="manualItemName" placeholder="Item name (e.g., Doctor Visit)">
@@ -529,37 +529,17 @@ const testDropdown = document.getElementById('testDropdown');
 const selectedItemsDiv = document.getElementById('itemsList');
 
 function addTestToSelected(test) {
-    if (selectedItems.some(item => item.id === test.id)) {
+    if (selectedItems.some(item => item.type === 'test' && item.id === test.id)) {
         showToast('Test already selected', 'error');
         return;
     }
-    selectedItems.push({ ...test, quantity: 1 });
-    renderSelectedItems();
-    calculateBillSummary();
-}
-
-function renderSelectedItems() {
-    if (selectedItems.length === 0) {
-        selectedItemsDiv.innerHTML = '<div class="no-data">No items selected</div>';
-        return;
-    }
-
-    selectedItemsDiv.innerHTML = '';
-    selectedItems.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'selected-item';
-        div.innerHTML = `
-            <span>${item.name} (৳${parseFloat(item.price).toFixed(2)})</span>
-            <button class="btn btn-sm btn-danger" onclick="removeSelectedItem(${index})">Remove</button>
-        `;
-        selectedItemsDiv.appendChild(div);
+    selectedItems.push({
+        type: 'test',
+        id: test.id,
+        name: test.name,
+        price: parseFloat(test.price)
     });
-}
-
-// Remove item
-function removeSelectedItem(index) {
-    selectedItems.splice(index, 1);
-    renderSelectedItems();
+    updateSelectedItems();
     calculateBillSummary();
 }
 
@@ -1064,7 +1044,7 @@ document.addEventListener('click', function(e) {
             // Close view modal if open
             document.getElementById('billViewModal').style.display = 'none';
                                     
-            renderSelectedItems();
+            updateSelectedItems();
             calculateBillSummary();
             document.getElementById('billingModal').style.display = 'block';
         } else {
@@ -1116,7 +1096,7 @@ async function saveBill(formData) {
             // Form reset 
             document.getElementById('billingForm').reset();
             selectedItems = [];
-            renderSelectedItems();
+            updateSelectedItems();
             
         } else {
             // Error
@@ -1207,6 +1187,12 @@ async function saveBill(formData) {
                     // Show advanced link only for admin
                     if (currentUser.role === 'admin') {
                         document.getElementById('advancedLink').style.display = 'block';
+                    }
+                    
+                    // Hide manual items option for accountant
+                    if (currentUser.role === 'accountant') {
+                        const container = document.getElementById('manualItemsContainer');
+                        if (container) container.style.display = 'none';
                     }
                 }
             } catch (error) {

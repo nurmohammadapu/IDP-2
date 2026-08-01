@@ -25,33 +25,43 @@ function createAdvancedBill(billData) {
     const final_total = subtotal - discount_amount
     const due_amount = final_total - (paid_amount || 0)
 
-    const sql = `
-      INSERT INTO advanced_bills (
-        patient_id, billing_date, subtotal, discount_type, discount_value, 
-        discount_amount, total_amount, paid_amount, due_amount, payment_method, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `
+    // Lookup latest appointment for the patient to resolve their doctor_id automatically
+    db.get(
+      "SELECT doctor_id FROM appointments WHERE patient_id = ? ORDER BY appointment_date DESC, appointment_time DESC LIMIT 1",
+      [patient_id],
+      (appErr, appRow) => {
+        const resolvedDoctorId = billData.doctor_id || (appRow ? appRow.doctor_id : null);
+        const resolvedCreatedBy = billData.created_by || null;
 
-    db.run(
-      sql,
-      [
-        patient_id,
-        billing_date,
-        subtotal,
-        discount_type || "amount",
-        discount_value || 0,
-        discount_amount,
-        final_total,
-        paid_amount || 0,
-        due_amount,
-        payment_method || "cash",
-      ],
-      function (err) {
-        if (err) {
-          console.error("Error creating advanced bill:", err)
-          reject(err)
-          return
-        }
+        const sql = `
+          INSERT INTO advanced_bills (
+            patient_id, doctor_id, created_by, billing_date, subtotal, discount_type, discount_value, 
+            discount_amount, total_amount, paid_amount, due_amount, payment_method, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `
+
+        db.run(
+          sql,
+          [
+            patient_id,
+            resolvedDoctorId,
+            resolvedCreatedBy,
+            billing_date,
+            subtotal,
+            discount_type || "amount",
+            discount_value || 0,
+            discount_amount,
+            final_total,
+            paid_amount || 0,
+            due_amount,
+            payment_method || "cash",
+          ],
+          function (err) {
+            if (err) {
+              console.error("Error creating advanced bill:", err)
+              reject(err)
+              return
+            }
 
         const billId = this.lastID
 
@@ -86,14 +96,14 @@ function createAdvancedBill(billData) {
           Promise.all(insertItems)
             .then(() => {
               if (paid_amount > 0) {
-                const sqlPayment = `
-                  INSERT INTO bill_payments (bill_id, amount, payment_method, payment_date, created_at)
-                  VALUES (?, ?, ?, ?, datetime('now'))
-                `
-                db.run(
-                  sqlPayment,
-                  [billId, paid_amount, payment_method || "cash", new Date().toISOString()],
-                  function (err) {
+                 const sqlPayment = `
+                   INSERT INTO bill_payments (bill_id, amount, payment_method, payment_date, created_by, created_at)
+                   VALUES (?, ?, ?, ?, ?, datetime('now'))
+                 `
+                 db.run(
+                   sqlPayment,
+                   [billId, paid_amount, payment_method || "cash", new Date().toISOString(), resolvedCreatedBy],
+                   function (err) {
                     if (err) {
                       reject(err)
                       return
@@ -109,29 +119,59 @@ function createAdvancedBill(billData) {
         } else {
           resolve(billId)
         }
-      },
-    )
+      })
+    })
   })
 }
 
 // Retrieve all advanced bills with associated patient name and contact
-function getAllAdvancedBills() {
+function getAllAdvancedBills(user) {
   const db = getDB()
   return new Promise((resolve, reject) => {
-    const sql = `
-      SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
-      FROM advanced_bills ab 
-      JOIN patients p ON ab.patient_id = p.id 
-      ORDER BY ab.billing_date DESC
-    `
-    db.all(sql, [], (err, rows) => {
+    const handleResult = (err, rows) => {
       if (err) {
         console.error("Error getting advanced bills:", err)
         reject(err)
         return
       }
       resolve(rows)
-    })
+    }
+
+    if (!user || user.role === 'admin' || user.role === 'accountant' || user.role === 'receptionist') {
+      const sql = `
+        SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
+        FROM advanced_bills ab 
+        JOIN patients p ON ab.patient_id = p.id 
+        ORDER BY ab.id DESC
+      `
+      db.all(sql, [], handleResult)
+    } else if (user.role === 'doctor') {
+      db.get("SELECT id FROM doctors WHERE user_id = ?", [user.id], (docErr, docRow) => {
+        const docId = docRow ? docRow.id : -1;
+        const sql = `
+          SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
+          FROM advanced_bills ab 
+          JOIN patients p ON ab.patient_id = p.id 
+          WHERE ab.doctor_id = ?
+          ORDER BY ab.id DESC
+        `
+        db.all(sql, [docId], handleResult)
+      })
+    } else if (user.role === 'patient') {
+      db.get("SELECT id FROM patients WHERE user_id = ?", [user.id], (patErr, patRow) => {
+        const patId = patRow ? patRow.id : -1;
+        const sql = `
+          SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
+          FROM advanced_bills ab 
+          JOIN patients p ON ab.patient_id = p.id 
+          WHERE ab.patient_id = ?
+          ORDER BY ab.id DESC
+        `
+        db.all(sql, [patId], handleResult)
+      })
+    } else {
+      resolve([])
+    }
   })
 }
 
@@ -289,15 +329,15 @@ function updateAdvancedBill(id, billData) {
 function addPayment(billId, paymentData) {
   const db = getDB()
   return new Promise((resolve, reject) => {
-    const { amount, payment_method, notes } = paymentData
+    const { amount, payment_method, notes, created_by } = paymentData
 
     const sqlInsertPayment = `
-      INSERT INTO bill_payments (bill_id, amount, payment_method, notes, payment_date, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO bill_payments (bill_id, amount, payment_method, notes, payment_date, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `
     db.run(
       sqlInsertPayment,
-      [billId, amount, payment_method, notes || "", new Date().toISOString()],
+      [billId, amount, payment_method, notes || "", new Date().toISOString(), created_by || null],
       function (err) {
         if (err) {
           console.error("Error adding payment:", err)

@@ -34,7 +34,8 @@ async function checkAuthAndLoadUser() {
         admin: ['dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'advanced.html', 'tests.html'],
         receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'tests.html'],
         doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'settings.html'],
-        patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html']
+        patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html'],
+        accountant: ['dashboard.html', 'billing.html', 'reports.html', 'settings.html']
       }
 
       // Check current page permission
@@ -55,6 +56,7 @@ async function checkAuthAndLoadUser() {
           else if (user.role === 'receptionist') window.location.href = 'dashboard.html'
           else if (user.role === 'doctor') window.location.href = 'doctor-dashboard.html'
           else if (user.role === 'patient') window.location.href = 'patient-dashboard.html'
+          else if (user.role === 'accountant') window.location.href = 'dashboard.html'
           else window.location.href = 'index.html'
           return
         }
@@ -155,6 +157,13 @@ function renderDynamicSidebar(role) {
       { href: 'patient-bills.html', text: '💰 My Bills' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
+  } else if (role === 'accountant') {
+    menuItems = [
+      { href: 'dashboard.html', text: '📊 Dashboard' },
+      { href: 'billing.html', text: '💰 Billing' },
+      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'settings.html', text: '⚙️ Settings' }
+    ]
   }
 
   sidebarMenu.innerHTML = ''
@@ -187,6 +196,7 @@ function renderDynamicSidebar(role) {
     else if (role === 'receptionist') roleSub.textContent = 'Receptionist Portal'
     else if (role === 'doctor') roleSub.textContent = 'Doctor Portal'
     else if (role === 'patient') roleSub.textContent = 'Patient Portal'
+    else if (role === 'accountant') roleSub.textContent = 'Accountant Portal'
   }
 }
 

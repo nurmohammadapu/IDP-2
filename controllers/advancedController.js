@@ -1,4 +1,5 @@
 const { auditAction } = require("../middleware/auditMiddleware")
+const { getAuthenticatedUser } = require("../middleware/authMiddleware")
 const { generateCSV, generatePDF } = require("../utils/exportService")
 const { getAllPatients } = require("../models/patientModel")
 const { getAllDoctors } = require("../models/doctorModel")
@@ -255,10 +256,12 @@ async function exportData(req, res) {
         data = await getAllAppointments()
         filename = `appointments_export_${Date.now()}`
         break
-      case "billing":
-        data = await getAllAdvancedBills()
+      case "billing": {
+        const user = await getAuthenticatedUser(req)
+        data = await getAllAdvancedBills(user)
         filename = `billing_export_${Date.now()}`
         break
+      }
       default:
         throw new Error("Invalid export type")
     }

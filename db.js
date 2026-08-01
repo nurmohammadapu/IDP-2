@@ -118,6 +118,8 @@ function createTables() {
       `CREATE TABLE IF NOT EXISTS advanced_bills (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         patient_id INTEGER NOT NULL,
+        doctor_id INTEGER,
+        created_by INTEGER,
         billing_date DATE NOT NULL,
         subtotal REAL NOT NULL DEFAULT 0,
         discount_type TEXT DEFAULT 'amount',
@@ -129,7 +131,9 @@ function createTables() {
         payment_method TEXT DEFAULT 'cash',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+        FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+        FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE SET NULL,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
       )`,
 
       `CREATE TABLE IF NOT EXISTS bill_items (
@@ -151,8 +155,10 @@ function createTables() {
         payment_method TEXT NOT NULL,
         payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         notes TEXT,
+        created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (bill_id) REFERENCES advanced_bills(id) ON DELETE CASCADE
+        FOREIGN KEY (bill_id) REFERENCES advanced_bills(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
       )`,
 
       // Notifications table
@@ -226,7 +232,10 @@ function runMigrations() {
       { table: 'users', name: 'status', type: "TEXT DEFAULT 'active'" },
       { table: 'patients', name: 'user_id', type: 'INTEGER' },
       { table: 'doctors', name: 'user_id', type: 'INTEGER' },
-      { table: 'appointments', name: 'serial_number', type: 'INTEGER DEFAULT 0' }
+      { table: 'appointments', name: 'serial_number', type: 'INTEGER DEFAULT 0' },
+      { table: 'advanced_bills', name: 'created_by', type: 'INTEGER' },
+      { table: 'advanced_bills', name: 'doctor_id', type: 'INTEGER' },
+      { table: 'bill_payments', name: 'created_by', type: 'INTEGER' }
     ];
 
     const allColumns = [...doctorColumns, ...userProfileColumns, ...extraColumns];
@@ -330,6 +339,14 @@ function createDefaultUsers() {
         role: "patient",
         status: "active"
       },
+      {
+        name: "Accountant Staff",
+        email: "accountant@hospital.com",
+        password: crypto.createHash("sha256").update("accountant123").digest("hex"),
+        role: "accountant",
+        status: "active",
+        phone: "01700000222"
+      }
     ];
 
     let completed = 0;

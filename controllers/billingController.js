@@ -9,11 +9,13 @@ const {
   addPayment,
 } = require("../models/billingModel")
 const { auditAction } = require("../middleware/auditMiddleware")
+const { getAuthenticatedUser } = require("../middleware/authMiddleware")
 
 // Enhanced billing functions
 async function getAllAdvanced(req, res) {
   try {
-    const bills = await getAllAdvancedBills()
+    const user = await getAuthenticatedUser(req)
+    const bills = await getAllAdvancedBills(user)
     res.writeHead(200, { "Content-Type": "application/json" })
     res.end(JSON.stringify(bills))
   } catch (error) {
@@ -53,6 +55,9 @@ async function createAdvanced(req, res) {
     // Calculate subtotal
     const subtotal = items.reduce((sum, item) => sum + Number.parseFloat(item.price), 0)
 
+    const user = await getAuthenticatedUser(req)
+    const created_by = user ? user.id : null
+
     const billId = await createAdvancedBill({
       patient_id,
       billing_date,
@@ -62,6 +67,7 @@ async function createAdvanced(req, res) {
       discount_value: Number.parseFloat(discount_value) || 0,
       paid_amount: Number.parseFloat(paid_amount) || 0,
       payment_method: payment_method || "cash",
+      created_by
     })
 
     // Log audit activity
@@ -136,10 +142,14 @@ async function addBillPayment(req, res, id) {
       return
     }
 
+    const user = await getAuthenticatedUser(req)
+    const created_by = user ? user.id : null
+
     const paymentId = await addPayment(id, {
       amount: Number.parseFloat(amount),
       payment_method: payment_method || "cash",
       notes: notes || "",
+      created_by
     })
 
     // Log audit activity
