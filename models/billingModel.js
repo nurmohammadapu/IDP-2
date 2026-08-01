@@ -35,9 +35,9 @@ function createAdvancedBill(billData) {
 
         const sql = `
           INSERT INTO advanced_bills (
-            patient_id, doctor_id, created_by, billing_date, subtotal, discount_type, discount_value, 
+            patient_id, doctor_id, created_by, appointment_id, billing_date, subtotal, discount_type, discount_value, 
             discount_amount, total_amount, paid_amount, due_amount, payment_method, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `
 
         db.run(
@@ -46,6 +46,7 @@ function createAdvancedBill(billData) {
             patient_id,
             resolvedDoctorId,
             resolvedCreatedBy,
+            billData.appointment_id || null,
             billing_date,
             subtotal,
             discount_type || "amount",

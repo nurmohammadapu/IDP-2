@@ -5,6 +5,7 @@ const {
   updateAppointment,
   deleteAppointment,
 } = require("../models/appointmentModel")
+const { createAdvancedBill } = require("../models/billingModel")
 
 async function getAll(req, res) {
   try {
@@ -207,14 +208,19 @@ async function create(req, res) {
       }
     }
 
+    const status = req.body.status || 'pending'
+
     const appointmentId = await createAppointment({
       patient_id,
       doctor_id,
       appointment_date,
       appointment_time,
+      status,
       notes,
       serial_number: serialNumber,
     })
+
+    await autoCreateVisitBill(appointmentId, user)
 
     res.writeHead(201, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id, serialNumber }))
@@ -290,6 +296,9 @@ async function update(req, res, id) {
       serial_number
     })
 
+    const user = await getAuthenticatedUser(req)
+    await autoCreateVisitBill(id, user)
+
     res.writeHead(200, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ message: "Appointment updated successfully" }))
   } catch (error) {
@@ -360,6 +369,71 @@ async function getAvailableSlots(req, res, query) {
     console.error("Get available slots error:", error)
     res.writeHead(500, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ error: "Internal server error" }))
+  }
+}
+
+async function autoCreateVisitBill(appointmentId, user) {
+  const db = getDB()
+  try {
+    const appointment = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT a.*, d.visit_fee, d.id as doc_id 
+         FROM appointments a 
+         JOIN doctors d ON a.doctor_id = d.id 
+         WHERE a.id = ?`,
+        [appointmentId],
+        (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        }
+      )
+    })
+
+    if (!appointment) return
+
+    // Only create a bill if the status is confirmed
+    if (appointment.status !== 'confirmed') return
+
+    // Check if a bill already exists for this appointment
+    const existingBill = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT id FROM advanced_bills WHERE appointment_id = ?",
+        [appointmentId],
+        (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        }
+      )
+    })
+
+    if (existingBill) return
+
+    const fee = appointment.visit_fee || 0
+    const created_by = user ? user.id : null
+
+    await createAdvancedBill({
+      patient_id: appointment.patient_id,
+      doctor_id: appointment.doc_id,
+      appointment_id: appointmentId,
+      billing_date: appointment.appointment_date,
+      items: [
+        {
+          type: 'manual',
+          id: 9999,
+          name: 'Doctor Visit',
+          price: fee
+        }
+      ],
+      subtotal: fee,
+      discount_type: 'amount',
+      discount_value: 0,
+      paid_amount: 0,
+      payment_method: 'cash',
+      created_by
+    })
+    console.log(`Auto-created Doctor Visit bill for appointment ${appointmentId} with fee ${fee}`)
+  } catch (err) {
+    console.error(`Error auto-creating bill for appointment ${appointmentId}:`, err)
   }
 }
 

@@ -302,7 +302,7 @@
             </div>
 
              <!-- Test Selection -->
-<div class="form-group" style="position: relative;">
+<div class="form-group" style="position: relative;" id="testSelectionContainer">
     <label for="testSearch">Select Tests</label>
     <input type="text" id="testSearch" placeholder="Search tests by name" autocomplete="off" />
     <div id="testDropdown" class="dropdown-list"></div>
@@ -999,6 +999,15 @@ document.addEventListener('click', function(e) {
                         
             updateSelectedItems();
             calculateBillSummary();
+
+            if (currentUser && currentUser.role === 'receptionist') {
+                const manualNameInput = document.getElementById('manualItemName');
+                if (manualNameInput) {
+                    manualNameInput.value = 'Doctor Visit';
+                    manualNameInput.disabled = true;
+                }
+            }
+
             document.getElementById('billingModal').style.display = 'block';
         }
 
@@ -1060,6 +1069,14 @@ async function saveBill(formData) {
     if (selectedItems.length === 0) {
         showToast('Please select at least one item', 'warning');
         return;
+    }
+
+    if (currentUser && currentUser.role === 'receptionist') {
+        const hasForbiddenItem = selectedItems.some(item => item.name !== 'Doctor Visit');
+        if (hasForbiddenItem) {
+            showToast('Receptionists are only authorized to collect Doctor Visit fees.', 'error');
+            return;
+        }
     }
                 
     const billData = {
@@ -1193,6 +1210,18 @@ async function saveBill(formData) {
                     if (currentUser.role === 'accountant') {
                         const container = document.getElementById('manualItemsContainer');
                         if (container) container.style.display = 'none';
+                    }
+
+                    // Hide test selector and enforce Doctor Visit for receptionist
+                    if (currentUser.role === 'receptionist') {
+                        const testContainer = document.getElementById('testSelectionContainer');
+                        if (testContainer) testContainer.style.display = 'none';
+
+                        const manualNameInput = document.getElementById('manualItemName');
+                        if (manualNameInput) {
+                            manualNameInput.value = 'Doctor Visit';
+                            manualNameInput.disabled = true;
+                        }
                     }
                 }
             } catch (error) {

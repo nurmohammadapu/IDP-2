@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Features - Hospital Management System</title>
+    <title>Activity Log - Hospital Management System</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -203,7 +203,7 @@
                 <li><a href="billing.html">💰 Billing</a></li>
                 <li><a href="reports.html">📈 Reports</a></li>
                 <li><a href="settings.html">⚙️ Settings</a></li>
-                <li><a href="advanced.html" class="active">⚡ Advanced</a></li>
+                <li><a href="advanced.html" class="active">📝 Activity Log</a></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
@@ -212,7 +212,7 @@
 
         <main class="main-content">
             <header class="main-header">
-                <h1>Advanced Features</h1>
+                <h1>Activity Log</h1>
                 <div class="header-actions">
                     <button id="notificationBtn" class="btn btn-secondary">
                         🔔 Notifications
@@ -386,22 +386,25 @@
                 <div class="feature-card" style="margin-top: 2rem;">
                     <h3><span class="feature-icon">📋</span> Audit Trail</h3>
                     <p>Track all system activities and changes with detailed logging.</p>
-                    <div class="form-row" style="margin-bottom: 1rem;">
-                        <input type="date" id="auditDateFrom" class="form-control" placeholder="From Date">
-                        <input type="date" id="auditDateTo" class="form-control" placeholder="To Date">
-                        <select id="auditAction" class="form-control">
-                            <option value="">All Actions</option>
-                            <option value="CREATE">Create</option>
-                            <option value="UPDATE">Update</option>
-                            <option value="DELETE">Delete</option>
-                            <option value="LOGIN">Login</option>
-                            <option value="EXPORT">Export</option>
-                            <option value="BACKUP_CREATED">Backup</option>
-                        </select>
-                        <button id="loadAuditBtn" class="btn btn-primary">Load Audit</button>
-                    </div>
-                    <div id="auditTrail" style="max-height: 400px; overflow-y: auto;">
-                        <div class="loading">Loading audit trail...</div>
+                    <button id="toggleAuditBtn" class="btn btn-secondary" style="margin-bottom: 1rem;">Show Activity Log</button>
+                    <div id="auditContentWrapper" style="display: none;">
+                        <div class="form-row" style="margin-bottom: 1rem;">
+                            <input type="date" id="auditDateFrom" class="form-control" placeholder="From Date">
+                            <input type="date" id="auditDateTo" class="form-control" placeholder="To Date">
+                            <select id="auditAction" class="form-control">
+                                <option value="">All Actions</option>
+                                <option value="CREATE">Create</option>
+                                <option value="UPDATE">Update</option>
+                                <option value="DELETE">Delete</option>
+                                <option value="LOGIN">Login</option>
+                                <option value="EXPORT">Export</option>
+                                <option value="BACKUP_CREATED">Backup</option>
+                            </select>
+                            <button id="loadAuditBtn" class="btn btn-primary">Load Audit</button>
+                        </div>
+                        <div id="auditTrail" style="max-height: 400px; overflow-y: auto;">
+                            <div class="loading">Loading audit trail...</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -415,7 +418,6 @@
             loadNotifications();
             loadSystemStats();
             loadBackups();
-            loadAuditTrail();
 
             // Search
             document.getElementById('advancedSearchBtn').addEventListener('click', performAdvancedSearch);
@@ -435,6 +437,22 @@
 
             // Audit
             document.getElementById('loadAuditBtn').addEventListener('click', loadAuditTrail);
+
+            // Toggle Audit Log
+            const toggleAuditBtn = document.getElementById('toggleAuditBtn');
+            const auditContentWrapper = document.getElementById('auditContentWrapper');
+            if (toggleAuditBtn && auditContentWrapper) {
+                toggleAuditBtn.addEventListener('click', () => {
+                    if (auditContentWrapper.style.display === 'none') {
+                        auditContentWrapper.style.display = 'block';
+                        toggleAuditBtn.textContent = 'Hide Activity Log';
+                        loadAuditTrail();
+                    } else {
+                        auditContentWrapper.style.display = 'none';
+                        toggleAuditBtn.textContent = 'Show Activity Log';
+                    }
+                });
+            }
 
             // Auto-refresh
             setInterval(loadNotifications, 30000);

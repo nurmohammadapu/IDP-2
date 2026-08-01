@@ -126,6 +126,28 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Doctor Visit Collections Breakdown -->
+                <div class="breakdown-section" id="visitBreakdownSection">
+                    <h2>Doctor Visit Collections Breakdown</h2>
+                    <div class="table-container">
+                        <table id="visitBreakdownTable">
+                            <thead>
+                                <tr>
+                                    <th>Doctor Name</th>
+                                    <th>Collected By</th>
+                                    <th>Visit Count</th>
+                                    <th>Total Collected</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="loading">Loading breakdown data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -198,6 +220,25 @@
                                 <td>Tk-${parseFloat(item.revenue).toFixed(2)}</td>
                             `;
                             monthlyTableBody.appendChild(row);
+                        });
+                    }
+
+                    // Load doctor visit breakdown table
+                    const breakdownTableBody = document.querySelector('#visitBreakdownTable tbody');
+                    breakdownTableBody.innerHTML = '';
+                    
+                    if (!data.visitBreakdown || data.visitBreakdown.length === 0) {
+                        breakdownTableBody.innerHTML = '<tr><td colspan="4" class="no-data">No visit billing breakdown available</td></tr>';
+                    } else {
+                        data.visitBreakdown.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.doctor_name}</td>
+                                <td>${item.staff_name}</td>
+                                <td>${item.visit_count}</td>
+                                <td>Tk-${parseFloat(item.total_collected).toFixed(2)}</td>
+                            `;
+                            breakdownTableBody.appendChild(row);
                         });
                     }
                 } else {

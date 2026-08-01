@@ -32,7 +32,7 @@ async function checkAuthAndLoadUser() {
       // Page authorization mapping
       const allowedPages = {
         admin: ['dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'advanced.html', 'tests.html'],
-        receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'tests.html'],
+        receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html'],
         doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'settings.html'],
         patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html'],
         accountant: ['dashboard.html', 'billing.html', 'reports.html', 'settings.html']
@@ -131,7 +131,7 @@ function renderDynamicSidebar(role) {
       { href: 'billing.html', text: '💰 Billing' },
       { href: 'reports.html', text: '📈 Reports' },
       { href: 'settings.html', text: '⚙️ Settings' },
-      { href: 'advanced.html', text: '⚡ Advanced', id: 'advancedLink' }
+      { href: 'advanced.html', text: '📝 Activity Log', id: 'advancedLink' }
     ]
   } else if (role === 'receptionist') {
     menuItems = [
@@ -139,7 +139,6 @@ function renderDynamicSidebar(role) {
       { href: 'patients.html', text: '👥 Patients' },
       { href: 'doctors.html', text: '👨‍⚕️ Doctors' },
       { href: 'appointments.html', text: '📅 Appointments' },
-      { href: 'tests.html', text: '🧪 Tests' },
       { href: 'billing.html', text: '💰 Billing' },
       { href: 'reports.html', text: '📈 Reports' },
       { href: 'settings.html', text: '⚙️ Settings' }

@@ -119,6 +119,8 @@ async function getFinancialReport(req, res) {
     let query3Params = []
     let query4Sql = ""
     let query4Params = []
+    let query5Sql = ""
+    let query5Params = []
 
     if (!user || user.role === 'admin') {
       query1Sql = "SELECT SUM(amount) as total FROM bill_payments"
@@ -133,6 +135,13 @@ async function getFinancialReport(req, res) {
                    WHERE payment_date >= date('now','start of month','-5 months')
                    GROUP BY year, month
                    ORDER BY year DESC, month DESC`
+      query5Sql = `SELECT d.name as doctor_name, COALESCE(u.name, 'System') as staff_name, COUNT(bp.id) as visit_count, SUM(bp.amount) as total_collected
+                   FROM bill_payments bp
+                   JOIN advanced_bills ab ON bp.bill_id = ab.id
+                   JOIN doctors d ON ab.doctor_id = d.id
+                   LEFT JOIN users u ON bp.created_by = u.id
+                   GROUP BY d.id, bp.created_by`
+      query5Params = []
     } else if (user.role === 'accountant' || user.role === 'receptionist') {
       query1Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ?"
       query1Params = [user.id]
@@ -153,6 +162,15 @@ async function getFinancialReport(req, res) {
                    GROUP BY year, month
                    ORDER BY year DESC, month DESC`
       query4Params = [user.id]
+
+      query5Sql = `SELECT d.name as doctor_name, COALESCE(u.name, 'Me') as staff_name, COUNT(bp.id) as visit_count, SUM(bp.amount) as total_collected
+                   FROM bill_payments bp
+                   JOIN advanced_bills ab ON bp.bill_id = ab.id
+                   JOIN doctors d ON ab.doctor_id = d.id
+                   LEFT JOIN users u ON bp.created_by = u.id
+                   WHERE bp.created_by = ?
+                   GROUP BY d.id`
+      query5Params = [user.id]
     } else if (user.role === 'doctor') {
       const docRow = await new Promise((resolve) => {
         db.get("SELECT id FROM doctors WHERE user_id = ?", [user.id], (err, row) => resolve(row))
@@ -180,6 +198,15 @@ async function getFinancialReport(req, res) {
                    GROUP BY year, month
                    ORDER BY year DESC, month DESC`
       query4Params = [docId]
+
+      query5Sql = `SELECT d.name as doctor_name, COALESCE(u.name, 'System') as staff_name, COUNT(bp.id) as visit_count, SUM(bp.amount) as total_collected
+                   FROM bill_payments bp
+                   JOIN advanced_bills ab ON bp.bill_id = ab.id
+                   JOIN doctors d ON ab.doctor_id = d.id
+                   LEFT JOIN users u ON bp.created_by = u.id
+                   WHERE ab.doctor_id = ?
+                   GROUP BY bp.created_by`
+      query5Params = [docId]
     } else if (user.role === 'patient') {
       const patRow = await new Promise((resolve) => {
         db.get("SELECT id FROM patients WHERE user_id = ?", [user.id], (err, row) => resolve(row))
@@ -207,11 +234,22 @@ async function getFinancialReport(req, res) {
                    GROUP BY year, month
                    ORDER BY year DESC, month DESC`
       query4Params = [patId]
+
+      query5Sql = `SELECT d.name as doctor_name, COALESCE(u.name, 'System') as staff_name, COUNT(bp.id) as visit_count, SUM(bp.amount) as total_collected
+                   FROM bill_payments bp
+                   JOIN advanced_bills ab ON bp.bill_id = ab.id
+                   JOIN doctors d ON ab.doctor_id = d.id
+                   LEFT JOIN users u ON bp.created_by = u.id
+                   WHERE ab.patient_id = ?
+                   GROUP BY d.id`
+      query5Params = [patId]
     } else {
       query1Sql = "SELECT 0 as total"
       query2Sql = "SELECT 0 as total"
       query3Sql = "SELECT '' as date, 0 as revenue WHERE 1=0"
       query4Sql = "SELECT '' as year, '' as month, 0 as revenue WHERE 1=0"
+      query5Sql = "SELECT '' as doctor_name, '' as staff_name, 0 as visit_count, 0 as total_collected WHERE 1=0"
+      query5Params = []
     }
 
     const queries = [
@@ -239,15 +277,22 @@ async function getFinancialReport(req, res) {
           else resolve(rows)
         })
       }),
+      new Promise((resolve, reject) => {
+        db.all(query5Sql, query5Params, (err, rows) => {
+          if (err) reject(err)
+          else resolve(rows || [])
+        })
+      }),
     ]
 
-    const [totalRevenue, pendingPayments, dailyRevenue, monthlyRevenue] = await Promise.all(queries)
+    const [totalRevenue, pendingPayments, dailyRevenue, monthlyRevenue, visitBreakdown] = await Promise.all(queries)
 
     const financialReport = {
       totalRevenue,
       pendingPayments,
       dailyRevenue,
       monthlyRevenue,
+      visitBreakdown,
     }
 
     res.writeHead(200, { "Content-Type": "application/json" })

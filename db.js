@@ -133,7 +133,8 @@ function createTables() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
         FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE SET NULL,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
       )`,
 
       `CREATE TABLE IF NOT EXISTS bill_items (
@@ -235,7 +236,8 @@ function runMigrations() {
       { table: 'appointments', name: 'serial_number', type: 'INTEGER DEFAULT 0' },
       { table: 'advanced_bills', name: 'created_by', type: 'INTEGER' },
       { table: 'advanced_bills', name: 'doctor_id', type: 'INTEGER' },
-      { table: 'bill_payments', name: 'created_by', type: 'INTEGER' }
+      { table: 'bill_payments', name: 'created_by', type: 'INTEGER' },
+      { table: 'advanced_bills', name: 'appointment_id', type: 'INTEGER' }
     ];
 
     const allColumns = [...doctorColumns, ...userProfileColumns, ...extraColumns];

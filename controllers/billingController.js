@@ -58,6 +58,15 @@ async function createAdvanced(req, res) {
     const user = await getAuthenticatedUser(req)
     const created_by = user ? user.id : null
 
+    if (user && user.role === 'receptionist') {
+      const hasForbiddenItem = items.some(item => item.name !== 'Doctor Visit')
+      if (hasForbiddenItem) {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "Receptionists are only authorized to collect Doctor Visit fees" }))
+        return
+      }
+    }
+
     const billId = await createAdvancedBill({
       patient_id,
       billing_date,
@@ -94,6 +103,16 @@ async function updateAdvanced(req, res, id) {
       res.writeHead(400, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "Patient, date, and items are required" }))
       return
+    }
+
+    const user = await getAuthenticatedUser(req)
+    if (user && user.role === 'receptionist') {
+      const hasForbiddenItem = items.some(item => item.name !== 'Doctor Visit')
+      if (hasForbiddenItem) {
+        res.writeHead(400, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ error: "Receptionists are only authorized to collect Doctor Visit fees" }))
+        return
+      }
     }
 
     // Get old bill data for audit

@@ -3,10 +3,10 @@ const { getDB } = require("../db")
 function createAppointment(appointmentData) {
   return new Promise((resolve, reject) => {
     const db = getDB()
-    const { patient_id, doctor_id, appointment_date, appointment_time, notes, serial_number } = appointmentData
+    const { patient_id, doctor_id, appointment_date, appointment_time, status, notes, serial_number } = appointmentData
 
-    const sql = `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, notes, serial_number) VALUES (?, ?, ?, ?, ?, ?)`
-    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, notes || "", serial_number || 0], function(err) {
+    const sql = `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, status, notes, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    db.run(sql, [patient_id, doctor_id, appointment_date, appointment_time, status || "pending", notes || "", serial_number || 0], function(err) {
       if (err) {
         reject(err)
         return
