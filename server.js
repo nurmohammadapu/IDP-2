@@ -102,11 +102,7 @@ async function startServer() {
   try {
     await connectDB()
     app.listen(PORT, () => {
-      console.log(`🚀 Hospital Management Server running on http://localhost:${PORT}`)
-      console.log(`📝 Registration: http://localhost:${PORT}/register.html`)
-      console.log(`🔐 Login: http://localhost:${PORT}/login.html`)
-      console.log(`📊 Dashboard: http://localhost:${PORT}/dashboard.html`)
-      console.log(`⚡ Advanced Features: http://localhost:${PORT}/advanced.html`)
+      console.log(`Hospital Management Server running on http://localhost:${PORT}`)
     })
   } catch (error) {
     console.error("Failed to start server:", error)
