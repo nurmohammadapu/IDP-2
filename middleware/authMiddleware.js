@@ -1,47 +1,44 @@
-const { getDB } = require("../db");
-const { findUserById } = require("../models/userModel");
+const { promisify } = require("util")
+const { getDB } = require("../db")
+const { findUserById } = require("../models/userModel")
 
 async function getAuthenticatedUser(req) {
-  const sessionId = req.cookies?.sessionId;
-  if (!sessionId) return null;
+  try {
+    const sessionId = req.cookies?.sessionId
+    if (!sessionId) return null
 
-  const db = getDB();
-  return new Promise((resolve) => {
-    db.get(
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+
+    const session = await get(
       "SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')",
-      [sessionId],
-      async (err, session) => {
-        if (err || !session) {
-          resolve(null);
-          return;
-        }
-        try {
-          const user = await findUserById(session.user_id);
-          resolve(user || null);
-        } catch (error) {
-          resolve(null);
-        }
-      }
-    );
-  });
+      [sessionId]
+    )
+
+    if (!session) return null
+
+    const user = await findUserById(session.user_id)
+    return user || null
+  } catch (error) {
+    console.error("Get authenticated user error:", error)
+    return null
+  }
 }
 
 async function authenticate(req, res, allowedRoles = []) {
-  const user = await getAuthenticatedUser(req);
+  const user = await getAuthenticatedUser(req)
   if (!user) {
-    res.writeHead(401, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Not authenticated" }));
-    return null;
+    res.status(401).json({ error: "Not authenticated" })
+    return null
   }
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    res.writeHead(403, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Access denied" }));
-    return null;
+    res.status(403).json({ error: "Access denied" })
+    return null
   }
-  return user;
+  return user
 }
 
 module.exports = {
   getAuthenticatedUser,
-  authenticate
-};
+  authenticate,
+}

@@ -49,17 +49,16 @@ async function getNotifications(req, res) {
        LIMIT 20`
     )
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(results))
+    return res.json(results)
   } catch (error) {
     console.error("Get notifications error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function markNotificationRead(req, res, id) {
+async function markNotificationRead(req, res) {
   try {
+    const { id } = req.params
     const db = getDB()
 
     await dbRun(db, "UPDATE notifications SET is_read = 1 WHERE id = ?", [id])
@@ -67,12 +66,10 @@ async function markNotificationRead(req, res, id) {
     // Log audit activity
     auditAction(req, "UPDATE", "notifications", id, null, { is_read: true })
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Notification marked as read" }))
+    return res.json({ message: "Notification marked as read" })
   } catch (error) {
     console.error("Mark notification read error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -121,12 +118,10 @@ async function getAuditTrail(req, res) {
       new_values: log.new_values ? JSON.parse(log.new_values) : null,
     }))
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(processedResults))
+    return res.json(processedResults)
   } catch (error) {
     console.error("Get audit trail error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -164,12 +159,10 @@ async function getSystemStats(req, res) {
       lastBackup: new Date().toISOString(),
     }
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(stats))
+    return res.json(stats)
   } catch (error) {
     console.error("Get system stats error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -227,12 +220,10 @@ async function createSystemBackup(req, res) {
       tables_backed_up: tables.length,
     }
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(result))
+    return res.json(result)
   } catch (error) {
     console.error("Create backup error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -267,9 +258,7 @@ async function exportData(req, res) {
     }
 
     if (!data || data.length === 0) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "No data available for export" }))
-      return
+      return res.status(400).json({ error: "No data available for export" })
     }
 
     // Log audit activity
@@ -282,26 +271,21 @@ async function exportData(req, res) {
       const headers = Object.keys(data[0] || {})
       const csv = generateCSV(data, headers)
 
-      res.writeHead(200, {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${filename}.csv"`,
-      })
+      res.setHeader("Content-Type", "text/csv")
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}.csv"`)
       res.end(csv)
     } else if (format === "pdf") {
       const html = generatePDF(data, `${type.charAt(0).toUpperCase() + type.slice(1)} Export Report`)
 
-      res.writeHead(200, {
-        "Content-Type": "text/html",
-        "Content-Disposition": `attachment; filename="${filename}.html"`,
-      })
+      res.setHeader("Content-Type", "text/html")
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}.html"`)
       res.end(html)
     } else {
       throw new Error("Invalid format")
     }
   } catch (error) {
     console.error("Export data error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: error.message }))
+    return res.status(500).json({ error: error.message })
   }
 }
 
@@ -312,9 +296,7 @@ async function advancedSearch(req, res) {
     let results = []
 
     if (!query || !query.trim()) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Search query is required" }))
-      return
+      return res.status(400).json({ error: "Search query is required" })
     }
 
     const db = getDB()
@@ -364,12 +346,10 @@ async function advancedSearch(req, res) {
       results_count: results.length,
     })
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(results))
+    return res.json(results)
   } catch (error) {
     console.error("Advanced search error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -383,19 +363,15 @@ async function sendAppointmentReminder(req, res) {
     })
 
     setTimeout(() => {
-      res.writeHead(200, { "Content-Type": "application/json" })
-      res.end(
-        JSON.stringify({
-          message: "Test reminder sent successfully",
-          email: "patient@example.com",
-          timestamp: new Date().toISOString(),
-        }),
-      )
+      res.json({
+        message: "Test reminder sent successfully",
+        email: "patient@example.com",
+        timestamp: new Date().toISOString(),
+      })
     }, 2000)
   } catch (error) {
     console.error("Send reminder error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -416,12 +392,10 @@ async function getBackups(req, res) {
       },
     ]
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(demoBackups))
+    return res.json(demoBackups)
   } catch (error) {
     console.error("Get backups error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 

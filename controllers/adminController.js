@@ -13,18 +13,14 @@ async function getAll(req, res) {
   try {
     const adminUser = await getAuthenticatedUser(req)
     if (!adminUser || adminUser.role !== "admin") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Access denied. Admin only." }))
-      return
+      return res.status(403).json({ error: "Access denied. Admin only." })
     }
 
     const users = await getAllUsers()
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(users))
+    return res.json(users)
   } catch (error) {
     console.error("Get admin users error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -32,24 +28,18 @@ async function create(req, res) {
   try {
     const adminUser = await getAuthenticatedUser(req)
     if (!adminUser || adminUser.role !== "admin") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Access denied. Admin only." }))
-      return
+      return res.status(403).json({ error: "Access denied. Admin only." })
     }
 
     const { name, email, password, role, status, phone, address, specialty, room_number, visit_fee, age, gender } = req.body
 
     if (!name || !email || !password || !role) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Name, email, password, and role are required" }))
-      return
+      return res.status(400).json({ error: "Name, email, password, and role are required" })
     }
 
     const existingUser = await findUserByEmail(email)
     if (existingUser) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "User with this email already exists" }))
-      return
+      return res.status(400).json({ error: "User with this email already exists" })
     }
 
     const userId = await createUser({ name, email, password, role, status: status || 'active' })
@@ -59,9 +49,7 @@ async function create(req, res) {
       if (role === "doctor") {
         if (!specialty || !phone) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Specialty and contact phone number are required for doctors" }))
-          return
+          return res.status(400).json({ error: "Specialty and contact phone number are required for doctors" })
         }
         await new Promise((resolve, reject) => {
           db.run(
@@ -77,9 +65,7 @@ async function create(req, res) {
       } else if (role === "patient") {
         if (!age || !gender || !phone || !address) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Age, gender, contact phone, and address are required for patients" }))
-          return
+          return res.status(400).json({ error: "Age, gender, contact phone, and address are required for patients" })
         }
         await new Promise((resolve, reject) => {
           db.run(
@@ -107,34 +93,27 @@ async function create(req, res) {
       }
     } catch (dbError) {
       await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Linked table creation failed: " + dbError.message }))
-      return
+      return res.status(400).json({ error: "Linked table creation failed: " + dbError.message })
     }
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "User created successfully", userId }))
+    return res.status(201).json({ message: "User created successfully", userId })
   } catch (error) {
     console.error("Create admin user error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function update(req, res, id) {
+async function update(req, res) {
   try {
+    const { id } = req.params
     const adminUser = await getAuthenticatedUser(req)
     if (!adminUser || adminUser.role !== "admin") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Access denied. Admin only." }))
-      return
+      return res.status(403).json({ error: "Access denied. Admin only." })
     }
 
     const { name, email, role, status } = req.body
     if (!name || !email || !role || !status) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Name, email, role, and status are required" }))
-      return
+      return res.status(400).json({ error: "Name, email, role, and status are required" })
     }
 
     await updateUserByAdmin(id, { name, email, role, status })
@@ -147,48 +126,40 @@ async function update(req, res, id) {
       db.run("UPDATE patients SET name = ? WHERE user_id = ?", [name, id])
     }
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "User updated successfully" }))
+    return res.json({ message: "User updated successfully" })
   } catch (error) {
     console.error("Update admin user error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function changeStatus(req, res, id) {
+async function changeStatus(req, res) {
   try {
+    const { id } = req.params
     const adminUser = await getAuthenticatedUser(req)
     if (!adminUser || adminUser.role !== "admin") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Access denied. Admin only." }))
-      return
+      return res.status(403).json({ error: "Access denied. Admin only." })
     }
 
     const { status } = req.body
     if (!status) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Status is required" }))
-      return
+      return res.status(400).json({ error: "Status is required" })
     }
 
     await updateUserStatus(id, status)
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "User status updated successfully" }))
+    return res.json({ message: "User status updated successfully" })
   } catch (error) {
     console.error("Change status error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function remove(req, res, id) {
+async function remove(req, res) {
   try {
+    const { id } = req.params
     const adminUser = await getAuthenticatedUser(req)
     if (!adminUser || adminUser.role !== "admin") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Access denied. Admin only." }))
-      return
+      return res.status(403).json({ error: "Access denied. Admin only." })
     }
 
     // Get user role before delete
@@ -207,12 +178,10 @@ async function remove(req, res, id) {
     }
 
     await deleteUser(id)
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "User deleted successfully" }))
+    return res.json({ message: "User deleted successfully" })
   } catch (error) {
     console.error("Delete user error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 

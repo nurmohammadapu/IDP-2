@@ -10,29 +10,24 @@ const { createAdvancedBill } = require("../models/billingModel")
 async function getAll(req, res) {
   try {
     const appointments = await getAllAppointments()
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(appointments))
+    return res.json(appointments)
   } catch (error) {
     console.error("Get appointments error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function getById(req, res, id) {
+async function getById(req, res) {
   try {
+    const { id } = req.params
     const appointment = await getAppointmentById(id);
-       if (!appointment) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Appointment not found" }))
-      return
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" })
     }
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(appointment))
+    return res.json(appointment)
   } catch (error) {
     console.error("Get appointment error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -154,24 +149,18 @@ async function create(req, res) {
       if (patient) {
         patient_id = patient.id
       } else {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Patient profile not found for this account" }))
-        return
+        return res.status(400).json({ error: "Patient profile not found for this account" })
       }
     } else if (!patient_id && new_patient) {
       const { name, age, gender, contact, address } = new_patient
       if (!name || !age || !gender || !contact || !address) {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Missing required patient fields" }))
-        return
+        return res.status(400).json({ error: "Missing required patient fields" })
       }
       patient_id = await createPatient({ name, age, gender, contact, address })
     }
 
     if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Patient, doctor, date, and time are required" }))
-      return
+      return res.status(400).json({ error: "Patient, doctor, date, and time are required" })
     }
 
     const db = getDB()
@@ -189,9 +178,7 @@ async function create(req, res) {
     })
 
     if (alreadyBooked) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "This time slot is already booked for this doctor." }))
-      return
+      return res.status(400).json({ error: "This time slot is already booked for this doctor." })
     }
 
     // 2. Fetch doctor's schedule to compute serial number
@@ -222,31 +209,26 @@ async function create(req, res) {
 
     await autoCreateVisitBill(appointmentId, user)
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Appointment created successfully", appointmentId, patientId: patient_id, serialNumber }))
+    return res.status(201).json({ message: "Appointment created successfully", appointmentId, patientId: patient_id, serialNumber })
   } catch (error) {
     console.error("Create appointment error:", error)
     if (error.message && (error.message.includes("UNIQUE constraint failed: patients.contact") || error.message.includes("patients.contact"))) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "A patient with this contact number already exists." }))
-      return
+      return res.status(400).json({ error: "A patient with this contact number already exists." })
     }
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function update(req, res, id) {
+async function update(req, res) {
   try {
+    const { id } = req.params
     const db = getDB()
     const existing = await new Promise((resolve) => {
       db.get("SELECT * FROM appointments WHERE id = ?", [id], (err, row) => resolve(row))
     })
 
     if (!existing) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Appointment not found" }))
-      return
+      return res.status(404).json({ error: "Appointment not found" })
     }
 
     const patient_id = req.body.patient_id !== undefined ? req.body.patient_id : existing.patient_id
@@ -267,9 +249,7 @@ async function update(req, res, id) {
       })
 
       if (alreadyBooked) {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "This time slot is already booked for this doctor." }))
-        return
+        return res.status(400).json({ error: "This time slot is already booked for this doctor." })
       }
 
       const doctor = await new Promise((resolve) => {
@@ -299,35 +279,30 @@ async function update(req, res, id) {
     const user = await getAuthenticatedUser(req)
     await autoCreateVisitBill(id, user)
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Appointment updated successfully" }))
+    return res.json({ message: "Appointment updated successfully" })
   } catch (error) {
     console.error("Update appointment error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function deleteAppointmentById(req, res, id) {
+async function deleteAppointmentById(req, res) {
   try {
+    const { id } = req.params
     await deleteAppointment(id)
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Appointment deleted successfully" }))
+    return res.json({ message: "Appointment deleted successfully" })
   } catch (error) {
     console.error("Delete appointment error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function getAvailableSlots(req, res, query) {
+async function getAvailableSlots(req, res) {
   try {
-    const { doctor_id, date } = query
+    const { doctor_id, date } = req.query
 
     if (!doctor_id || !date) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "doctor_id and date are required" }))
-      return
+      return res.status(400).json({ error: "doctor_id and date are required" })
     }
 
     const db = getDB()
@@ -336,9 +311,7 @@ async function getAvailableSlots(req, res, query) {
     })
 
     if (!doctor) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Doctor not found" }))
-      return
+      return res.status(404).json({ error: "Doctor not found" })
     }
 
     const allSlots = generateSlots(doctor.schedule)
@@ -363,12 +336,10 @@ async function getAvailableSlots(req, res, query) {
       isBooked: bookedTimes.has(slot.time)
     }))
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(slotsWithStatus))
+    return res.json(slotsWithStatus)
   } catch (error) {
     console.error("Get available slots error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -415,15 +386,6 @@ async function autoCreateVisitBill(appointmentId, user) {
       patient_id: appointment.patient_id,
       doctor_id: appointment.doc_id,
       appointment_id: appointmentId,
-      billing_date: appointment.appointment_date,
-      items: [
-        {
-          type: 'manual',
-          id: 9999,
-          name: 'Doctor Visit',
-          price: fee
-        }
-      ],
       subtotal: fee,
       discount_type: 'amount',
       discount_value: 0,

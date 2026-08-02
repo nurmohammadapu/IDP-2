@@ -1,8 +1,10 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
-function logActivity(activityData) {
-  return new Promise((resolve, reject) => {
+async function logActivity(activityData) {
+  try {
     const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { user_id, action, table_name, record_id, old_values, new_values, ip_address } = activityData
 
     const sql = `
@@ -10,7 +12,7 @@ function logActivity(activityData) {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 
-    db.run(
+    const result = await run(
       sql,
       [
         user_id,
@@ -20,21 +22,19 @@ function logActivity(activityData) {
         JSON.stringify(old_values || {}),
         JSON.stringify(new_values || {}),
         ip_address,
-      ],
-      function(err) {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(this.lastID)
-      },
+      ]
     )
-  })
+    return result.lastID
+  } catch (err) {
+    console.error("logActivity database error:", err)
+    throw err
+  }
 }
 
-function getAuditLogs(filters = {}) {
-  return new Promise((resolve, reject) => {
+async function getAuditLogs(filters = {}) {
+  try {
     const db = getDB()
+    const all = promisify(db.all).bind(db)
     let query = `
       SELECT a.*, u.name as user_name, u.email as user_email 
       FROM audit_logs a
@@ -70,14 +70,12 @@ function getAuditLogs(filters = {}) {
 
     query += " ORDER BY a.created_at DESC LIMIT 100"
 
-    db.all(query, params, (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
-    })
-  })
+    const rows = await all(query, params)
+    return rows
+  } catch (err) {
+    console.error("getAuditLogs database error:", err)
+    throw err
+  }
 }
 
 module.exports = {

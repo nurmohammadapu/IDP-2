@@ -1,43 +1,18 @@
-const url = require("url")
+const createHttpApp = require("../httpHelper")
+const router = createHttpApp.Router()
 const { getAll, getById, create, update, deletePatientById, search, getDashboardData } = require("../controllers/patientController")
 
-async function patientRoutes(req, res) {
-  const parsedUrl = url.parse(req.url, true)
-  const pathname = parsedUrl.pathname
-  const method = req.method
-
-  try {
-    if (pathname === "/api/patients/dashboard" && method === "GET") {
-      await getDashboardData(req, res)
-    } else if (pathname === "/api/patients" && method === "GET") {
-      const { search: searchQuery } = parsedUrl.query
-      if (searchQuery) {
-        // Call the search controller function with the query param
-        await search(req, res, searchQuery)
-      } else {
-        await getAll(req, res)
-      }
-    } else if (pathname === "/api/patients" && method === "POST") {
-      await create(req, res)
-    } else if (pathname.match(/^\/api\/patients\/\d+$/) && method === "GET") {
-      // Extract ID from URL
-      const id = pathname.split("/")[3]
-      await getById(req, res, id)
-    } else if (pathname.match(/^\/api\/patients\/\d+$/) && method === "PUT") {
-      const id = pathname.split("/")[3]
-      await update(req, res, id)
-    } else if (pathname.match(/^\/api\/patients\/\d+$/) && method === "DELETE") {
-      const id = pathname.split("/")[3]
-      await deletePatientById(req, res, id)
-    } else {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Route not found" }))
-    }
-  } catch (error) {
-    console.error("Patient route error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+router.get("/dashboard", getDashboardData)
+router.get("/", (req, res) => {
+  const { search: searchQuery } = req.query
+  if (searchQuery) {
+    return search(req, res)
   }
-}
+  return getAll(req, res)
+})
+router.post("/", create)
+router.get("/:id", getById)
+router.put("/:id", update)
+router.delete("/:id", deletePatientById)
 
-module.exports = patientRoutes
+module.exports = router

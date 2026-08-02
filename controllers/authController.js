@@ -1,7 +1,6 @@
 const {
   createUser,
   findUserByEmail,
-  findUserByEmailOrPhone,
   findUserById,
   verifyPassword,
   updateUserProfile,
@@ -15,45 +14,16 @@ async function register(req, res) {
     const { name, email, password, role } = req.body
 
     if (!name || !email || !password || !role) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "All fields are required" }))
-      return
+      return res.status(400).json({ error: "All fields are required" })
     }
 
     if (role !== "patient") {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Only patient registration is allowed publicly" }))
-      return
+      return res.status(400).json({ error: "Only patient registration is allowed publicly" })
     }
 
     const existingUser = await findUserByEmail(email)
     if (existingUser) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "User with this email already exists" }))
-      return
-    }
-
-    // Check unique phone number
-    const { phone } = req.body
-    if (phone) {
-      const db = getDB()
-      const existingPatientPhone = await new Promise((resolve, reject) => {
-        db.get("SELECT id FROM patients WHERE contact = ?", [phone], (err, row) => {
-          if (err) reject(err)
-          else resolve(row)
-        })
-      })
-      const existingDoctorPhone = await new Promise((resolve, reject) => {
-        db.get("SELECT id FROM doctors WHERE contact = ?", [phone], (err, row) => {
-          if (err) reject(err)
-          else resolve(row)
-        })
-      })
-      if (existingPatientPhone || existingDoctorPhone) {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "User with this phone number already exists" }))
-        return
-      }
+      return res.status(400).json({ error: "User with this email already exists" })
     }
 
     // Default status: pending for doctor/receptionist, active for admin/patient
@@ -67,9 +37,7 @@ async function register(req, res) {
         const { specialty, phone, room_number, visit_fee } = req.body
         if (!specialty || !phone) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Specialty and contact phone number are required for doctors" }))
-          return
+          return res.status(400).json({ error: "Specialty and contact phone number are required for doctors" })
         }
         await new Promise((resolve, reject) => {
           db.run(
@@ -84,22 +52,15 @@ async function register(req, res) {
         })
       } else if (role === "patient") {
         const { age, gender, phone, address } = req.body
-        if (!phone) {
+        if (!age || !gender || !phone || !address) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Contact phone number is required" }))
-          return
+          return res.status(400).json({ error: "Age, gender, contact phone, and address are required for patients" })
         }
-
-        const finalAge = age !== undefined && age !== "" ? parseInt(age) : 0
-        const finalGender = gender || "Unspecified"
-        const finalAddress = address || "Not specified"
-
         await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [userId, name, finalAge, finalGender, phone, finalAddress, "None"],
+            [userId, name, age, gender, phone, address, "None"],
             function (err) {
               if (err) reject(err)
               else resolve()
@@ -113,31 +74,25 @@ async function register(req, res) {
         await updateUserProfile(userId, {
           name,
           phone: req.body.phone,
-          address: req.body.address || "Not specified",
-          gender: req.body.gender || "Unspecified",
+          address: req.body.address,
+          gender: req.body.gender || "",
           date_of_birth: req.body.date_of_birth || ""
         })
       }
     } catch (dbError) {
       // Rollback user creation on linked table errors (e.g. unique constraint on contact number)
       await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Linked record error: " + dbError.message }))
-      return
+      return res.status(400).json({ error: "Linked record error: " + dbError.message })
     }
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(
-      JSON.stringify({
-        message: "User registered successfully",
-        userId,
-        user: { id: userId, name, email, role, status },
-      }),
-    )
+    return res.status(201).json({
+      message: "User registered successfully",
+      userId,
+      user: { id: userId, name, email, role, status },
+    })
   } catch (error) {
     console.error("Register error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error: " + error.message }))
+    return res.status(500).json({ error: "Internal server error: " + error.message })
   }
 }
 
@@ -146,30 +101,22 @@ async function login(req, res) {
     const { email, password } = req.body
 
     if (!email || !password) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Email and password are required" }))
-      return
+      return res.status(400).json({ error: "Email and password are required" })
     }
 
-    const user = await findUserByEmailOrPhone(email)
+    const user = await findUserByEmail(email)
     if (!user) {
-      res.writeHead(401, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Invalid credentials" }))
-      return
+      return res.status(401).json({ error: "Invalid credentials" })
     }
 
     const isValidPassword = verifyPassword(password, user.password)
     if (!isValidPassword) {
-      res.writeHead(401, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Invalid credentials" }))
-      return
+      return res.status(401).json({ error: "Invalid credentials" })
     }
 
     // Check account status
     if (user.status && user.status !== "active") {
-      res.writeHead(403, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Your account is pending approval by an administrator." }))
-      return
+      return res.status(403).json({ error: "Your account is pending approval by an administrator." })
     }
 
     // Create session in SQLite
@@ -187,20 +134,14 @@ async function login(req, res) {
     })
 
     // Set cookie and respond
-    res.writeHead(200, {
-      "Content-Type": "application/json",
-      "Set-Cookie": `sessionId=${sessionId}; HttpOnly; Path=/; Max-Age=86400`,
+    res.cookie("sessionId", sessionId, { httpOnly: true, path: "/", maxAge: 86400000 })
+    return res.json({
+      message: "Login successful",
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
     })
-    res.end(
-      JSON.stringify({
-        message: "Login successful",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role },
-      }),
-    )
   } catch (error) {
     console.error("Login error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -218,15 +159,11 @@ async function logout(req, res) {
       })
     }
 
-    res.writeHead(200, {
-      "Content-Type": "application/json",
-      "Set-Cookie": "sessionId=; HttpOnly; Path=/; Max-Age=0",
-    })
-    res.end(JSON.stringify({ message: "Logout successful" }))
+    res.clearCookie("sessionId", { httpOnly: true, path: "/" })
+    return res.json({ message: "Logout successful" })
   } catch (error) {
     console.error("Logout error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -235,9 +172,7 @@ async function getCurrentUser(req, res) {
     const sessionId = req.cookies.sessionId
 
     if (!sessionId) {
-      res.writeHead(401, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Not authenticated" }))
-      return
+      return res.status(401).json({ error: "Not authenticated" })
     }
 
     const db = getDB()
@@ -248,34 +183,27 @@ async function getCurrentUser(req, res) {
       async (err, session) => {
         if (err) {
           console.error("Session check error:", err)
-          res.writeHead(500, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Internal server error" }))
-          return
+          return res.status(500).json({ error: "Internal server error" })
         }
 
         if (!session) {
-          res.writeHead(401, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Session expired" }))
-          return
+          return res.status(401).json({ error: "Session expired" })
         }
 
         try {
           const user = await findUserById(session.user_id)
           if (user) delete user.password
 
-          res.writeHead(200, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ user }))
+          return res.json({ user })
         } catch (userError) {
           console.error("User fetch error:", userError)
-          res.writeHead(500, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Internal server error" }))
+          return res.status(500).json({ error: "Internal server error" })
         }
       },
     )
   } catch (error) {
     console.error("getCurrentUser error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -284,9 +212,7 @@ async function updateProfile(req, res) {
     const sessionId = req.cookies.sessionId;
 
     if (!sessionId) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not authenticated" }));
-      return;
+      return res.status(401).json({ error: "Not authenticated" })
     }
 
     const db = getDB();
@@ -303,21 +229,17 @@ async function updateProfile(req, res) {
     });
 
     if (!session) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Session expired" }));
-      return;
+      return res.status(401).json({ error: "Session expired" })
     }
 
     await updateUserProfile(session.user_id, req.body);
     const updatedUser = await findUserById(session.user_id);
     if (updatedUser) delete updatedUser.password;
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Profile updated successfully", user: updatedUser }));
+    return res.json({ message: "Profile updated successfully", user: updatedUser })
   } catch (error) {
     console.error("Update profile error:", error);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Internal server error" }));
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -326,9 +248,7 @@ async function changePassword(req, res) {
     const sessionId = req.cookies.sessionId;
 
     if (!sessionId) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not authenticated" }));
-      return;
+      return res.status(401).json({ error: "Not authenticated" })
     }
 
     const db = getDB();
@@ -345,42 +265,32 @@ async function changePassword(req, res) {
     });
 
     if (!session) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Session expired" }));
-      return;
+      return res.status(401).json({ error: "Session expired" })
     }
 
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Current password and new password are required" }));
-      return;
+      return res.status(400).json({ error: "Current password and new password are required" })
     }
 
     if (newPassword.length < 6) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "New password must be at least 6 characters" }));
-      return;
+      return res.status(400).json({ error: "New password must be at least 6 characters" })
     }
 
     const user = await findUserById(session.user_id);
     const isValid = verifyPassword(currentPassword, user.password);
 
     if (!isValid) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Current password is incorrect" }));
-      return;
+      return res.status(401).json({ error: "Current password is incorrect" })
     }
 
     await updateUserPassword(session.user_id, newPassword);
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Password changed successfully" }));
+    return res.json({ message: "Password changed successfully" })
   } catch (error) {
     console.error("Change password error:", error);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Internal server error" }));
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 

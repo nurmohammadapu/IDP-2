@@ -1,114 +1,105 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
 // Create a new doctor record in the database
-function createDoctor(doctorData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function createDoctor(doctorData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = doctorData
     const sql = `INSERT INTO doctors (unique_id, name, specialty, contact, room_number, visit_fee, schedule, created_at, updated_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    db.run(sql, [unique_id || null, name, specialty, contact, room_number || "", visit_fee || 0, schedule || ""], function(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.lastID)
-    })
-  })
+    const result = await run(sql, [unique_id || null, name, specialty, contact, room_number || "", visit_fee || 0, schedule || ""])
+    return result.lastID
+  } catch (err) {
+    console.error("createDoctor database error:", err)
+    throw err
+  }
 }
 
 // Retrieve all doctors ordered by creation date descending
-function getAllDoctors() {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM doctors ORDER BY created_at DESC", [], (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
-    })
-  })
+async function getAllDoctors() {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
+    const rows = await all("SELECT * FROM doctors ORDER BY created_at DESC", [])
+    return rows
+  } catch (err) {
+    console.error("getAllDoctors database error:", err)
+    throw err
+  }
 }
 
 // Retrieve a single doctor by their ID
-function getDoctorById(id) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM doctors WHERE id = ?", [id], (err, row) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(row)
-    })
-  })
+async function getDoctorById(id) {
+  try {
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+    const row = await get("SELECT * FROM doctors WHERE id = ?", [id])
+    return row
+  } catch (err) {
+    console.error("getDoctorById database error:", err)
+    throw err
+  }
 }
 
 // Update an existing doctor's details by ID
-function updateDoctor(id, doctorData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function updateDoctor(id, doctorData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { unique_id, name, specialty, contact, room_number, visit_fee, schedule } = doctorData
     const sql = `UPDATE doctors SET unique_id = ?, name = ?, specialty = ?, contact = ?, room_number = ?, visit_fee = ?, schedule = ?, updated_at = datetime('now') WHERE id = ?`
-    db.run(sql, [unique_id || null, name, specialty, contact, room_number, visit_fee, schedule, id], function(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.changes > 0)
-    })
-  })
+    const result = await run(sql, [unique_id || null, name, specialty, contact, room_number, visit_fee, schedule, id])
+    return result.changes > 0
+  } catch (err) {
+    console.error("updateDoctor database error:", err)
+    throw err
+  }
 }
 
 // Delete a doctor record by ID
-function deleteDoctor(id) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.get("SELECT user_id FROM doctors WHERE id = ?", [id], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
+async function deleteDoctor(id) {
+  try {
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+    const run = promisify(db.run).bind(db)
+
+    const row = await get("SELECT user_id FROM doctors WHERE id = ?", [id])
+    const userId = row ? row.user_id : null
+
+    const result = await run("DELETE FROM doctors WHERE id = ?", [id])
+
+    if (userId) {
+      try {
+        await run("DELETE FROM users WHERE id = ?", [userId])
+      } catch (err3) {
+        console.error("Error deleting linked doctor user:", err3)
       }
-      const userId = row ? row.user_id : null;
-      db.run("DELETE FROM doctors WHERE id = ?", [id], function(err2) {
-        if (err2) {
-          reject(err2);
-          return;
-        }
-        if (userId) {
-          db.run("DELETE FROM users WHERE id = ?", [userId], (err3) => {
-            if (err3) {
-              console.error("Error deleting linked doctor user:", err3);
-            }
-            resolve(this.changes > 0);
-          });
-        } else {
-          resolve(this.changes > 0);
-        }
-      });
-    });
-  });
+    }
+
+    return result.changes > 0
+  } catch (err) {
+    console.error("deleteDoctor database error:", err)
+    throw err
+  }
 }
 
-function searchDoctors(query) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function searchDoctors(query) {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
     const searchTerm = `%${query}%`
-    db.all(
+    const rows = await all(
       "SELECT * FROM doctors WHERE name LIKE ? OR contact LIKE ? ORDER BY created_at DESC",
-      [searchTerm, searchTerm],
-      (err, rows) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(rows)
-      }
+      [searchTerm, searchTerm]
     )
-  })
+    return rows
+  } catch (err) {
+    console.error("searchDoctors database error:", err)
+    throw err
+  }
 }
-
 
 module.exports = {
   createDoctor,
@@ -116,5 +107,5 @@ module.exports = {
   getDoctorById,
   updateDoctor,
   deleteDoctor,
-  searchDoctors
+  searchDoctors,
 }

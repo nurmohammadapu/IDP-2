@@ -16,29 +16,24 @@ async function getAllAdvanced(req, res) {
   try {
     const user = await getAuthenticatedUser(req)
     const bills = await getAllAdvancedBills(user)
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(bills))
+    return res.json(bills)
   } catch (error) {
     console.error("Get advanced bills error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function getAdvancedById(req, res, id) {
+async function getAdvancedById(req, res) {
   try {
+    const { id } = req.params
     const bill = await getAdvancedBillById(id)
     if (!bill) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Bill not found" }))
-      return
+      return res.status(404).json({ error: "Bill not found" })
     }
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(bill))
+    return res.json(bill)
   } catch (error) {
     console.error("Get advanced bill error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -47,9 +42,7 @@ async function createAdvanced(req, res) {
     const { patient_id, billing_date, items, discount_type, discount_value, paid_amount, payment_method } = req.body
 
     if (!patient_id || !billing_date || !items || items.length === 0) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Patient, date, and items are required" }))
-      return
+      return res.status(400).json({ error: "Patient, date, and items are required" })
     }
 
     // Calculate subtotal
@@ -61,9 +54,7 @@ async function createAdvanced(req, res) {
     if (user && user.role === 'receptionist') {
       const hasForbiddenItem = items.some(item => item.name !== 'Doctor Visit')
       if (hasForbiddenItem) {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Receptionists are only authorized to collect Doctor Visit fees" }))
-        return
+        return res.status(400).json({ error: "Receptionists are only authorized to collect Doctor Visit fees" })
       }
     }
 
@@ -86,32 +77,27 @@ async function createAdvanced(req, res) {
       items_count: items.length,
     })
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Advanced bill created successfully", billId }))
+    return res.status(201).json({ message: "Advanced bill created successfully", billId })
   } catch (error) {
     console.error("Create advanced bill error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function updateAdvanced(req, res, id) {
+async function updateAdvanced(req, res) {
   try {
+    const { id } = req.params
     const { patient_id, billing_date, items, discount_type, discount_value, paid_amount, payment_method } = req.body
 
     if (!patient_id || !billing_date || !items || items.length === 0) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Patient, date, and items are required" }))
-      return
+      return res.status(400).json({ error: "Patient, date, and items are required" })
     }
 
     const user = await getAuthenticatedUser(req)
     if (user && user.role === 'receptionist') {
       const hasForbiddenItem = items.some(item => item.name !== 'Doctor Visit')
       if (hasForbiddenItem) {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Receptionists are only authorized to collect Doctor Visit fees" }))
-        return
+        return res.status(400).json({ error: "Receptionists are only authorized to collect Doctor Visit fees" })
       }
     }
 
@@ -142,23 +128,20 @@ async function updateAdvanced(req, res, id) {
       { total_amount: subtotal - (Number.parseFloat(discount_value) || 0) },
     )
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Advanced bill updated successfully" }))
+    return res.json({ message: "Advanced bill updated successfully" })
   } catch (error) {
     console.error("Update advanced bill error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function addBillPayment(req, res, id) {
+async function addBillPayment(req, res) {
   try {
+    const { id } = req.params
     const { amount, payment_method, notes } = req.body
 
     if (!amount || amount <= 0) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Valid payment amount is required" }))
-      return
+      return res.status(400).json({ error: "Valid payment amount is required" })
     }
 
     const user = await getAuthenticatedUser(req)
@@ -178,22 +161,19 @@ async function addBillPayment(req, res, id) {
       payment_method,
     })
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Payment added successfully", paymentId }))
+    return res.status(201).json({ message: "Payment added successfully", paymentId })
   } catch (error) {
     console.error("Add payment error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function generateBillPDF(req, res, id) {
+async function generateBillPDF(req, res) {
   try {
+    const { id } = req.params
     const bill = await getAdvancedBillById(id)
     if (!bill) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Bill not found" }))
-      return
+      return res.status(404).json({ error: "Bill not found" })
     }
 
     // Generate proper PDF HTML
@@ -205,15 +185,12 @@ async function generateBillPDF(req, res, id) {
       patient_name: bill.patient_name,
     })
 
-    res.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Disposition": `inline; filename="bill_${id}.html"`,
-    })
+    res.setHeader("Content-Type", "text/html; charset=utf-8")
+    res.setHeader("Content-Disposition", `inline; filename="bill_${id}.html"`)
     res.end(pdfHTML)
   } catch (error) {
     console.error("Generate PDF error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -647,7 +624,7 @@ function generateBillPDFContent(bill) {
                     <span>- ৳${Number.parseFloat(bill.discount_amount || 0).toFixed(2)}</span>
                 </div>
                 <div class="summary-row total">
-                    <span>Total Amount:</span>
+                     <span>Total Amount:</span>
                     <span>৳${Number.parseFloat(bill.total_amount || 0).toFixed(2)}</span>
                 </div>
                 <div class="summary-row">
@@ -710,12 +687,10 @@ function generateBillPDFContent(bill) {
 async function getAll(req, res) {
   try {
     const bills = await getAllBills()
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(bills))
+    return res.json(bills)
   } catch (error) {
     console.error("Get bills error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -724,9 +699,7 @@ async function create(req, res) {
     const { patient_id, amount, service_details, billing_date } = req.body
 
     if (!patient_id || !amount || !service_details || !billing_date) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "All fields are required" }))
-      return
+      return res.status(400).json({ error: "All fields are required" })
     }
 
     const billId = await createBill({
@@ -743,23 +716,20 @@ async function create(req, res) {
       service_details,
     })
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Bill created successfully", billId }))
+    return res.status(201).json({ message: "Bill created successfully", billId })
   } catch (error) {
     console.error("Create bill error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function updateStatus(req, res, id) {
+async function updateStatus(req, res) {
   try {
+    const { id } = req.params
     const { status } = req.body
 
     if (!status || !["pending", "paid"].includes(status)) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Valid status is required" }))
-      return
+      return res.status(400).json({ error: "Valid status is required" })
     }
 
     await updateBillStatus(id, status)
@@ -767,12 +737,10 @@ async function updateStatus(req, res, id) {
     // Log audit activity
     await auditAction(req, "UPDATE", "billing", id, null, { status })
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Bill status updated successfully" }))
+    return res.json({ message: "Bill status updated successfully" })
   } catch (error) {
     console.error("Update bill status error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 

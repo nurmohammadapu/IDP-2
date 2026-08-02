@@ -1,9 +1,12 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
-// Create a new advanced bill with items and optional initial payment
-function createAdvancedBill(billData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function createAdvancedBill(billData) {
+  try {
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+    const run = promisify(db.run).bind(db)
+
     const {
       patient_id,
       billing_date,
@@ -26,117 +29,81 @@ function createAdvancedBill(billData) {
     const due_amount = final_total - (paid_amount || 0)
 
     // Lookup latest appointment for the patient to resolve their doctor_id automatically
-    db.get(
+    const appRow = await get(
       "SELECT doctor_id FROM appointments WHERE patient_id = ? ORDER BY appointment_date DESC, appointment_time DESC LIMIT 1",
-      [patient_id],
-      (appErr, appRow) => {
-        const resolvedDoctorId = billData.doctor_id || (appRow ? appRow.doctor_id : null);
-        const resolvedCreatedBy = billData.created_by || null;
+      [patient_id]
+    )
 
-        const sql = `
-          INSERT INTO advanced_bills (
-            patient_id, doctor_id, created_by, appointment_id, billing_date, subtotal, discount_type, discount_value, 
-            discount_amount, total_amount, paid_amount, due_amount, payment_method, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    const resolvedDoctorId = billData.doctor_id || (appRow ? appRow.doctor_id : null)
+    const resolvedCreatedBy = billData.created_by || null
+
+    const sql = `
+      INSERT INTO advanced_bills (
+        patient_id, doctor_id, created_by, appointment_id, billing_date, subtotal, discount_type, discount_value, 
+        discount_amount, total_amount, paid_amount, due_amount, payment_method, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `
+
+    const result = await run(sql, [
+      patient_id,
+      resolvedDoctorId,
+      resolvedCreatedBy,
+      billData.appointment_id || null,
+      billing_date,
+      subtotal,
+      discount_type || "amount",
+      discount_value || 0,
+      discount_amount,
+      final_total,
+      paid_amount || 0,
+      due_amount,
+      payment_method || "cash",
+    ])
+
+    const billId = result.lastID
+
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const sqlItem = `
+          INSERT INTO bill_items (bill_id, item_type, test_id, item_name, item_price, created_at)
+          VALUES (?, ?, ?, ?, ?, datetime('now'))
         `
+        await run(sqlItem, [
+          billId,
+          item.type,
+          item.type === "test" ? item.id : null,
+          item.name,
+          item.price,
+        ])
+      }
+    }
 
-        db.run(
-          sql,
-          [
-            patient_id,
-            resolvedDoctorId,
-            resolvedCreatedBy,
-            billData.appointment_id || null,
-            billing_date,
-            subtotal,
-            discount_type || "amount",
-            discount_value || 0,
-            discount_amount,
-            final_total,
-            paid_amount || 0,
-            due_amount,
-            payment_method || "cash",
-          ],
-          function (err) {
-            if (err) {
-              console.error("Error creating advanced bill:", err)
-              reject(err)
-              return
-            }
+    if (paid_amount > 0) {
+      const sqlPayment = `
+        INSERT INTO bill_payments (bill_id, amount, payment_method, payment_date, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `
+      await run(sqlPayment, [
+        billId,
+        paid_amount,
+        payment_method || "cash",
+        new Date().toISOString(),
+        resolvedCreatedBy,
+      ])
+    }
 
-        const billId = this.lastID
-
-        if (items && items.length > 0) {
-          const insertItems = items.map(
-            (item) =>
-              new Promise((res, rej) => {
-                const sqlItem = `
-                  INSERT INTO bill_items (bill_id, item_type, test_id, item_name, item_price, created_at)
-                  VALUES (?, ?, ?, ?, ?, datetime('now'))
-                `
-                db.run(
-                  sqlItem,
-                  [
-                    billId,
-                    item.type,
-                    item.type === "test" ? item.id : null,
-                    item.name,
-                    item.price,
-                  ],
-                  function (err) {
-                    if (err) {
-                      rej(err)
-                      return
-                    }
-                    res()
-                  },
-                )
-              }),
-          )
-
-          Promise.all(insertItems)
-            .then(() => {
-              if (paid_amount > 0) {
-                 const sqlPayment = `
-                   INSERT INTO bill_payments (bill_id, amount, payment_method, payment_date, created_by, created_at)
-                   VALUES (?, ?, ?, ?, ?, datetime('now'))
-                 `
-                 db.run(
-                   sqlPayment,
-                   [billId, paid_amount, payment_method || "cash", new Date().toISOString(), resolvedCreatedBy],
-                   function (err) {
-                    if (err) {
-                      reject(err)
-                      return
-                    }
-                    resolve(billId)
-                  },
-                )
-              } else {
-                resolve(billId)
-              }
-            })
-            .catch(reject)
-        } else {
-          resolve(billId)
-        }
-      })
-    })
-  })
+    return billId
+  } catch (err) {
+    console.error("createAdvancedBill database error:", err)
+    throw err
+  }
 }
 
-// Retrieve all advanced bills with associated patient name and contact
-function getAllAdvancedBills(user) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    const handleResult = (err, rows) => {
-      if (err) {
-        console.error("Error getting advanced bills:", err)
-        reject(err)
-        return
-      }
-      resolve(rows)
-    }
+async function getAllAdvancedBills(user) {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
+    const get = promisify(db.get).bind(db)
 
     if (!user || user.role === 'admin' || user.role === 'accountant' || user.role === 'receptionist') {
       const sql = `
@@ -145,90 +112,70 @@ function getAllAdvancedBills(user) {
         JOIN patients p ON ab.patient_id = p.id 
         ORDER BY ab.id DESC
       `
-      db.all(sql, [], handleResult)
+      return await all(sql, [])
     } else if (user.role === 'doctor') {
-      db.get("SELECT id FROM doctors WHERE user_id = ?", [user.id], (docErr, docRow) => {
-        const docId = docRow ? docRow.id : -1;
-        const sql = `
-          SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
-          FROM advanced_bills ab 
-          JOIN patients p ON ab.patient_id = p.id 
-          WHERE ab.doctor_id = ?
-          ORDER BY ab.id DESC
-        `
-        db.all(sql, [docId], handleResult)
-      })
+      const docRow = await get("SELECT id FROM doctors WHERE user_id = ?", [user.id])
+      const docId = docRow ? docRow.id : -1
+      const sql = `
+        SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
+        FROM advanced_bills ab 
+        JOIN patients p ON ab.patient_id = p.id 
+        WHERE ab.doctor_id = ?
+        ORDER BY ab.id DESC
+      `
+      return await all(sql, [docId])
     } else if (user.role === 'patient') {
-      db.get("SELECT id FROM patients WHERE user_id = ?", [user.id], (patErr, patRow) => {
-        const patId = patRow ? patRow.id : -1;
-        const sql = `
-          SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
-          FROM advanced_bills ab 
-          JOIN patients p ON ab.patient_id = p.id 
-          WHERE ab.patient_id = ?
-          ORDER BY ab.id DESC
-        `
-        db.all(sql, [patId], handleResult)
-      })
+      const patRow = await get("SELECT id FROM patients WHERE user_id = ?", [user.id])
+      const patId = patRow ? patRow.id : -1
+      const sql = `
+        SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
+        FROM advanced_bills ab 
+        JOIN patients p ON ab.patient_id = p.id 
+        WHERE ab.patient_id = ?
+        ORDER BY ab.id DESC
+      `
+      return await all(sql, [patId])
     } else {
-      resolve([])
+      return []
     }
-  })
+  } catch (err) {
+    console.error("getAllAdvancedBills database error:", err)
+    throw err
+  }
 }
 
-// Retrieve detailed bill by ID including bill items and payment history
-function getAdvancedBillById(id) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function getAdvancedBillById(id) {
+  try {
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+    const all = promisify(db.all).bind(db)
+
     const sql = `
       SELECT ab.*, p.name as patient_name, p.contact as patient_contact, p.address as patient_address
       FROM advanced_bills ab 
       JOIN patients p ON ab.patient_id = p.id 
       WHERE ab.id = ?
     `
-    db.get(sql, [id], (err, bill) => {
-      if (err) {
-        console.error("Error getting advanced bill by id:", err)
-        reject(err)
-        return
-      }
+    const bill = await get(sql, [id])
+    if (!bill) return null
 
-      if (!bill) {
-        resolve(null)
-        return
-      }
+    const items = await all("SELECT * FROM bill_items WHERE bill_id = ?", [id])
+    const payments = await all("SELECT * FROM bill_payments WHERE bill_id = ? ORDER BY payment_date DESC", [id])
 
-      db.all("SELECT * FROM bill_items WHERE bill_id = ?", [id], (err, items) => {
-        if (err) {
-          console.error("Error getting bill items:", err)
-          reject(err)
-          return
-        }
-
-        db.all(
-          "SELECT * FROM bill_payments WHERE bill_id = ? ORDER BY payment_date DESC",
-          [id],
-          (err, payments) => {
-            if (err) {
-              console.error("Error getting bill payments:", err)
-              reject(err)
-              return
-            }
-
-            bill.items = items
-            bill.payments = payments
-            resolve(bill)
-          },
-        )
-      })
-    })
-  })
+    bill.items = items
+    bill.payments = payments
+    return bill
+  } catch (err) {
+    console.error("getAdvancedBillById database error:", err)
+    throw err
+  }
 }
 
-// Update an existing advanced bill and replace its items
-function updateAdvancedBill(id, billData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function updateAdvancedBill(id, billData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
+
     const {
       patient_id,
       billing_date,
@@ -257,177 +204,132 @@ function updateAdvancedBill(id, billData) {
         paid_amount = ?, due_amount = ?, payment_method = ?, updated_at = datetime('now')
       WHERE id = ?
     `
-    db.run(
-      sqlUpdate,
-      [
-        patient_id,
-        billing_date,
-        subtotal,
-        discount_type || "amount",
-        discount_value || 0,
-        discount_amount,
-        final_total,
-        paid_amount || 0,
-        due_amount,
-        payment_method || "cash",
-        id,
-      ],
-      function (err) {
-        if (err) {
-          console.error("Error updating advanced bill:", err)
-          reject(err)
-          return
-        }
+    await run(sqlUpdate, [
+      patient_id,
+      billing_date,
+      subtotal,
+      discount_type || "amount",
+      discount_value || 0,
+      discount_amount,
+      final_total,
+      paid_amount || 0,
+      due_amount,
+      payment_method || "cash",
+      id,
+    ])
 
-        db.run("DELETE FROM bill_items WHERE bill_id = ?", [id], function (err) {
-          if (err) {
-            console.error("Error deleting old bill items:", err)
-            reject(err)
-            return
-          }
+    await run("DELETE FROM bill_items WHERE bill_id = ?", [id])
 
-          if (items && items.length > 0) {
-            const insertItems = items.map(
-              (item) =>
-                new Promise((res, rej) => {
-                  const sqlItem = `
-                    INSERT INTO bill_items (bill_id, item_type, test_id, item_name, item_price, created_at)
-                    VALUES (?, ?, ?, ?, ?, datetime('now'))
-                  `
-                  db.run(
-                    sqlItem,
-                    [
-                      id,
-                      item.type,
-                      item.type === "test" ? item.id : null,
-                      item.name,
-                      item.price,
-                    ],
-                    function (err) {
-                      if (err) {
-                        rej(err)
-                        return
-                      }
-                      res()
-                    },
-                  )
-                }),
-            )
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const sqlItem = `
+          INSERT INTO bill_items (bill_id, item_type, test_id, item_name, item_price, created_at)
+          VALUES (?, ?, ?, ?, ?, datetime('now'))
+        `
+        await run(sqlItem, [
+          id,
+          item.type,
+          item.type === "test" ? item.id : null,
+          item.name,
+          item.price,
+        ])
+      }
+    }
 
-            Promise.all(insertItems)
-              .then(() => resolve(true))
-              .catch(reject)
-          } else {
-            resolve(true)
-          }
-        })
-      },
-    )
-  })
+    return true
+  } catch (err) {
+    console.error("updateAdvancedBill database error:", err)
+    throw err
+  }
 }
 
-// Add a payment to an existing bill and update paid/due amounts
-function addPayment(billId, paymentData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function addPayment(billId, paymentData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { amount, payment_method, notes, created_by } = paymentData
 
     const sqlInsertPayment = `
       INSERT INTO bill_payments (bill_id, amount, payment_method, notes, payment_date, created_by, created_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `
-    db.run(
-      sqlInsertPayment,
-      [billId, amount, payment_method, notes || "", new Date().toISOString(), created_by || null],
-      function (err) {
-        if (err) {
-          console.error("Error adding payment:", err)
-          reject(err)
-          return
-        }
+    const resultPayment = await run(sqlInsertPayment, [
+      billId,
+      amount,
+      payment_method,
+      notes || "",
+      new Date().toISOString(),
+      created_by || null,
+    ])
 
-        const sqlUpdateBill = `
-          UPDATE advanced_bills SET 
-            paid_amount = paid_amount + ?, 
-            due_amount = due_amount - ?
-          WHERE id = ?
-        `
-        db.run(sqlUpdateBill, [amount, amount, billId], function (err) {
-          if (err) {
-            console.error("Error updating bill amounts:", err)
-            reject(err)
-            return
-          }
-          resolve(this.lastID)
-        })
-      },
-    )
-  })
+    const sqlUpdateBill = `
+      UPDATE advanced_bills SET 
+        paid_amount = paid_amount + ?, 
+        due_amount = due_amount - ?
+      WHERE id = ?
+    `
+    await run(sqlUpdateBill, [amount, amount, billId])
+
+    return resultPayment.lastID
+  } catch (err) {
+    console.error("addPayment database error:", err)
+    throw err
+  }
 }
 
-// Legacy function to create a simple billing record (for backward compatibility)
-function createBill(billingData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function createBill(billingData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { patient_id, amount, service_details, billing_date } = billingData
 
     const sql = `
       INSERT INTO billing (patient_id, amount, service_details, billing_date, created_at, updated_at)
       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
     `
-
-    db.run(sql, [patient_id, amount, service_details, billing_date], function (err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.lastID)
-    })
-  })
+    const result = await run(sql, [patient_id, amount, service_details, billing_date])
+    return result.lastID
+  } catch (err) {
+    console.error("createBill database error:", err)
+    throw err
+  }
 }
 
-// Retrieve all legacy bills with patient info
-function getAllBills() {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function getAllBills() {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
     const sql = `
       SELECT b.*, p.name as patient_name, p.contact as patient_contact 
       FROM billing b 
       JOIN patients p ON b.patient_id = p.id 
       ORDER BY b.billing_date DESC
     `
-    db.all(sql, [], (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
-    })
-  })
+    return await all(sql, [])
+  } catch (err) {
+    console.error("getAllBills database error:", err)
+    throw err
+  }
 }
 
-// Update status of a legacy bill by ID
-function updateBillStatus(id, status) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.run("UPDATE billing SET status = ? WHERE id = ?", [status, id], function (err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(true)
-    })
-  })
+async function updateBillStatus(id, status) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
+    await run("UPDATE billing SET status = ? WHERE id = ?", [status, id])
+    return true
+  } catch (err) {
+    console.error("updateBillStatus database error:", err)
+    throw err
+  }
 }
 
 module.exports = {
-  // Advanced billing functions
   createAdvancedBill,
   getAllAdvancedBills,
   getAdvancedBillById,
   updateAdvancedBill,
   addPayment,
-  // Legacy functions
   createBill,
   getAllBills,
   updateBillStatus,

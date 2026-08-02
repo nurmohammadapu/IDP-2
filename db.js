@@ -1,5 +1,16 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const { promisify } = require("util");
+
+// Enable node.js utility promisify compatibility for database run calls
+sqlite3.Database.prototype.run[promisify.custom] = function (sql, params) {
+  return new Promise((resolve, reject) => {
+    this.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
+};
 
 let db = null;
 

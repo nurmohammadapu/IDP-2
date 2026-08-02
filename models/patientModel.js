@@ -1,97 +1,91 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
 // Create a new patient record
-function createPatient(patientData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function createPatient(patientData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { name, age, gender, contact, address, medical_history } = patientData
     const sql = `INSERT INTO patients (name, age, gender, contact, address, medical_history, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    db.run(sql, [name, age, gender, contact, address, medical_history || ""], function(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.lastID)  // last inserted row id
-    })
-  })
+    const result = await run(sql, [name, age, gender, contact, address, medical_history || ""])
+    return result.lastID
+  } catch (err) {
+    console.error("createPatient database error:", err)
+    throw err
+  }
 }
 
 // Get all patients, ordered by newest first
-function getAllPatients() {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM patients ORDER BY created_at DESC", [], (err, rows) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(rows)
-    })
-  })
+async function getAllPatients() {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
+    const rows = await all("SELECT * FROM patients ORDER BY created_at DESC", [])
+    return rows
+  } catch (err) {
+    console.error("getAllPatients database error:", err)
+    throw err
+  }
 }
 
 // Get a patient by their ID
-function getPatientById(id) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM patients WHERE id = ?", [id], (err, row) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(row) // single object or undefined if not found
-    })
-  })
+async function getPatientById(id) {
+  try {
+    const db = getDB()
+    const get = promisify(db.get).bind(db)
+    const row = await get("SELECT * FROM patients WHERE id = ?", [id])
+    return row
+  } catch (err) {
+    console.error("getPatientById database error:", err)
+    throw err
+  }
 }
 
 // Update an existing patient's information by ID
-function updatePatient(id, patientData) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function updatePatient(id, patientData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { name, age, gender, contact, address, medical_history } = patientData
     const sql = `UPDATE patients SET name = ?, age = ?, gender = ?, contact = ?, address = ?, medical_history = ?, updated_at = datetime('now') WHERE id = ?`
-    db.run(sql, [name, age, gender, contact, address, medical_history, id], function(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.changes > 0)  // true if row updated
-    })
-  })
+    const result = await run(sql, [name, age, gender, contact, address, medical_history, id])
+    return result.changes > 0
+  } catch (err) {
+    console.error("updatePatient database error:", err)
+    throw err
+  }
 }
 
 // Delete a patient record by ID
-function deletePatient(id) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
-    db.run("DELETE FROM patients WHERE id = ?", [id], function(err) {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(this.changes > 0) // true if row deleted
-    })
-  })
+async function deletePatient(id) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
+    const result = await run("DELETE FROM patients WHERE id = ?", [id])
+    return result.changes > 0
+  } catch (err) {
+    console.error("deletePatient database error:", err)
+    throw err
+  }
 }
 
 // Search patients by name or contact matching the query string
-function searchPatients(query) {
-  const db = getDB()
-  return new Promise((resolve, reject) => {
+async function searchPatients(query) {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
     const searchTerm = `%${query}%`
-    db.all(
+    const rows = await all(
       "SELECT * FROM patients WHERE name LIKE ? OR contact LIKE ? ORDER BY created_at DESC",
-      [searchTerm, searchTerm],
-      (err, rows) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(rows)
-      }
+      [searchTerm, searchTerm]
     )
-  })
+    return rows
+  } catch (err) {
+    console.error("searchPatients database error:", err)
+    throw err
+  }
 }
 
 module.exports = {

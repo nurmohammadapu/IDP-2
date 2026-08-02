@@ -1,77 +1,70 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
 // Create a new notification record
-function createNotification(notificationData) {
-  return new Promise((resolve, reject) => {
-    const connection = getDB()
+async function createNotification(notificationData) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
     const { user_id, title, message, type, related_id } = notificationData
 
-    connection.query(
+    const result = await run(
       "INSERT INTO notifications (user_id, title, message, type, related_id) VALUES (?, ?, ?, ?, ?)",
-      [user_id, title, message, type || "info", related_id || null],
-      (err, result) => {
-        if (err) {
-          reject(err)  // Reject promise if an error occurs
-          return
-        }
-        resolve(result.insertId)  // Resolve with the new notification ID
-      },
+      [user_id, title, message, type || "info", related_id || null]
     )
-  })
+    return result.lastID
+  } catch (err) {
+    console.error("createNotification database error:", err)
+    throw err
+  }
 }
 
 // Retrieve notifications for a user (including global notifications with user_id NULL)
-function getUserNotifications(userId) {
-  return new Promise((resolve, reject) => {
-    const connection = getDB()
-    connection.query(
+async function getUserNotifications(userId) {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
+    const results = await all(
       "SELECT * FROM notifications WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC LIMIT 50",
-      [userId],
-      (err, results) => {
-        if (err) {
-          reject(err)  // Reject promise if an error occurs
-          return
-        }
-        resolve(results)  // Resolve with list of notifications
-      },
+      [userId]
     )
-  })
+    return results
+  } catch (err) {
+    console.error("getUserNotifications database error:", err)
+    throw err
+  }
 }
 
 // Mark a notification as read by setting its is_read flag to 1
-function markAsRead(notificationId) {
-  return new Promise((resolve, reject) => {
-    const connection = getDB()
-    connection.query(
+async function markAsRead(notificationId) {
+  try {
+    const db = getDB()
+    const run = promisify(db.run).bind(db)
+    await run(
       "UPDATE notifications SET is_read = 1 WHERE id = ?",
-      [notificationId],
-      (err) => {
-        if (err) {
-          reject(err)  // Reject promise if an error occurs
-          return
-        }
-        resolve(true)  // Resolve indicating success
-      },
+      [notificationId]
     )
-  })
+    return true
+  } catch (err) {
+    console.error("markAsRead database error:", err)
+    throw err
+  }
 }
 
 // Get the count of unread notifications for a user (including global notifications)
-function getUnreadCount(userId) {
-  return new Promise((resolve, reject) => {
-    const connection = getDB()
-    connection.query(
+async function getUnreadCount(userId) {
+  try {
+    const db = getDB()
+    const all = promisify(db.all).bind(db)
+    const results = await all(
       "SELECT COUNT(*) as count FROM notifications WHERE (user_id = ? OR user_id IS NULL) AND is_read = 0",
-      [userId],
-      (err, results) => {
-        if (err) {
-          reject(err)  // Reject promise if an error occurs
-          return
-        }
-        resolve(results[0].count)  // Resolve with unread notification count
-      },
+      [userId]
     )
-  })
+    return results[0].count
+  } catch (err) {
+    console.error("getUnreadCount database error:", err)
+    throw err
+  }
 }
 
 module.exports = {

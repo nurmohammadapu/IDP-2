@@ -1,11 +1,13 @@
+const { promisify } = require("util")
 const { getDB } = require("../db")
 
 // Audit logging middleware (SQLite)
-function logAuditActivity(userId, action, tableName, recordId, oldValues = null, newValues = null, ipAddress = null) {
-  return new Promise((resolve, reject) => {
+async function logAuditActivity(userId, action, tableName, recordId, oldValues = null, newValues = null, ipAddress = null) {
+  try {
     const db = getDB()
+    const run = promisify(db.run).bind(db)
 
-    db.run(
+    const result = await run(
       `INSERT INTO audit_logs 
         (user_id, action, table_name, record_id, old_values, new_values, ip_address, created_at) 
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
@@ -17,48 +19,41 @@ function logAuditActivity(userId, action, tableName, recordId, oldValues = null,
         oldValues ? JSON.stringify(oldValues) : null,
         newValues ? JSON.stringify(newValues) : null,
         ipAddress,
-      ],
-      function (err) {
-        if (err) {
-          console.error("Audit log error:", err)
-          reject(err)
-        } else {
-          resolve(this.lastID) // SQLite uses lastID instead of insertId
-        }
-      }
+      ]
     )
-  })
+    return result.lastID // SQLite uses lastID
+  } catch (err) {
+    console.error("Audit log error:", err)
+    throw err
+  }
 }
 
 // Get user ID from session (SQLite)
 async function getUserFromSession(req) {
-  return new Promise((resolve) => {
+  try {
     const sessionId = req.cookies?.sessionId
     if (!sessionId) {
-      resolve(null)
-      return
+      return null
     }
 
     const db = getDB()
-    db.get(
+    const get = promisify(db.get).bind(db)
+    const row = await get(
       "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')",
-      [sessionId],
-      (err, row) => {
-        if (err || !row) {
-          resolve(null)
-        } else {
-          resolve(row.user_id)
-        }
-      }
+      [sessionId]
     )
-  })
+    return row ? row.user_id : null
+  } catch (err) {
+    console.error("Get user from session error:", err)
+    return null
+  }
 }
 
 // Audit wrapper function
 async function auditAction(req, action, tableName, recordId, oldValues = null, newValues = null) {
   try {
     const userId = await getUserFromSession(req)
-    const ipAddress = req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown"
+    const ipAddress = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket?.remoteAddress || req.connection?.remoteAddress || "unknown"
 
     await logAuditActivity(userId, action, tableName, recordId, oldValues, newValues, ipAddress)
   } catch (error) {

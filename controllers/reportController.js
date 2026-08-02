@@ -65,12 +65,10 @@ async function getOverview(req, res) {
       recentAppointments,
     }
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(overview))
+    return res.json(overview)
   } catch (error) {
     console.error("Get overview error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -79,9 +77,7 @@ async function getFinancialReport(req, res) {
     const { getAuthenticatedUser } = require("../middleware/authMiddleware")
     const user = await getAuthenticatedUser(req)
     if (!user) {
-      res.writeHead(401, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Unauthorized" }))
-      return
+      return res.status(401).json({ error: "Unauthorized" })
     }
 
     const db = getDB()
@@ -295,12 +291,10 @@ async function getFinancialReport(req, res) {
       visitBreakdown,
     }
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(financialReport))
+    return res.json(financialReport)
   } catch (error) {
     console.error("Get financial report error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 

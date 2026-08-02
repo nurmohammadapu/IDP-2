@@ -3,29 +3,24 @@ const { createTest, getAllTests, getTestById, updateTest, deleteTest } = require
 async function getAll(req, res) {
   try {
     const tests = await getAllTests()
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(tests))
+    return res.json(tests)
   } catch (error) {
     console.error("Get tests error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function getById(req, res, id) {
+async function getById(req, res) {
   try {
+    const { id } = req.params
     const test = await getTestById(id)
     if (!test) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Test not found" }))
-      return
+      return res.status(404).json({ error: "Test not found" })
     }
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(test))
+    return res.json(test)
   } catch (error) {
     console.error("Get test error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
@@ -34,9 +29,7 @@ async function create(req, res) {
     const { name, category, price, description } = req.body
 
     if (!name || !category || !price) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Name, category, and price are required" }))
-      return
+      return res.status(400).json({ error: "Name, category, and price are required" })
     }
 
     const testId = await createTest({
@@ -46,23 +39,20 @@ async function create(req, res) {
       description,
     })
 
-    res.writeHead(201, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Test created successfully", testId }))
+    return res.status(201).json({ message: "Test created successfully", testId })
   } catch (error) {
     console.error("Create test error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function update(req, res, id) {
+async function update(req, res) {
   try {
+    const { id } = req.params
     const { name, category, price, description } = req.body
 
     if (!name || !category || !price) {
-      res.writeHead(400, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "Name, category, and price are required" }))
-      return
+      return res.status(400).json({ error: "Name, category, and price are required" })
     }
 
     await updateTest(id, {
@@ -72,24 +62,21 @@ async function update(req, res, id) {
       description,
     })
 
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Test updated successfully" }))
+    return res.json({ message: "Test updated successfully" })
   } catch (error) {
     console.error("Update test error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-async function deleteTestById(req, res, id) {
+async function deleteTestById(req, res) {
   try {
+    const { id } = req.params
     await deleteTest(id)
-    res.writeHead(200, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ message: "Test deleted successfully" }))
+    return res.json({ message: "Test deleted successfully" })
   } catch (error) {
     console.error("Delete test error:", error)
-    res.writeHead(500, { "Content-Type": "application/json" })
-    res.end(JSON.stringify({ error: "Internal server error" }))
+    return res.status(500).json({ error: "Internal server error" })
   }
 }
 
