@@ -113,6 +113,22 @@ async function getDashboardData(req, res) {
       )
     })
 
+    // All appointments list for filtering
+    const allAppointmentsList = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT a.*, p.name as patient_name, p.contact as patient_contact
+         FROM appointments a
+         JOIN patients p ON a.patient_id = p.id
+         WHERE a.doctor_id = ?
+         ORDER BY a.appointment_date DESC, a.appointment_time DESC`,
+        [doctorId],
+        (err, rows) => {
+          if (err) reject(err)
+          else resolve(rows || [])
+        }
+      )
+    })
+
     return res.json({
       todayAppointments: todayAppointmentsCount,
       totalPatients: totalPatientsCount,
@@ -120,6 +136,7 @@ async function getDashboardData(req, res) {
       completedToday: completedTodayCount,
       todayAppointmentsList,
       upcomingAppointmentsList,
+      allAppointmentsList,
     })
   } catch (error) {
     console.error("Doctor dashboard error:", error)

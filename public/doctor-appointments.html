@@ -30,15 +30,21 @@
         <main class="main-content">
             <header class="main-header">
                 <h1>Manage My Appointments</h1>
-                <div class="header-actions">
-                    <select id="statusFilter" class="form-control" style="width: 180px; padding: 6px 12px; font-size: 14px;">
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
+                <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label for="dateFilter" style="font-weight: 600; font-size: 14px;">Date:</label>
+                        <input type="date" id="dateFilter" class="form-control" style="padding: 6px 10px; font-size: 14px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label for="statusFilter" style="font-weight: 600; font-size: 14px;">Status:</label>
+                        <select id="statusFilter" class="form-control" style="width: 160px; padding: 6px 12px; font-size: 14px;">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <button id="clearFiltersBtn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px;">Clear Filters</button>
                 </div>
             </header>
 
@@ -114,19 +120,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Combine lists
-                    const today = data.todayAppointmentsList || [];
-                    const upcoming = data.upcomingAppointmentsList || [];
-                    
-                    // We need to fetch all if possible, or combine these two. Let's merge them
-                    const merged = [...today];
-                    upcoming.forEach(up => {
-                        if (!merged.some(m => m.id === up.id)) {
-                            merged.push(up);
-                        }
-                    });
-                    
-                    allAppointments = merged;
+                    allAppointments = data.allAppointmentsList || [];
                     filterAndDisplay();
                 } else {
                     showToast('Failed to load appointments', 'error');
@@ -137,9 +131,12 @@
         }
 
         function filterAndDisplay() {
+            const dateFilter = document.getElementById('dateFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
             const filtered = allAppointments.filter(app => {
-                return !statusFilter || app.status === statusFilter;
+                const matchesDate = !dateFilter || app.appointment_date === dateFilter;
+                const matchesStatus = !statusFilter || app.status === statusFilter;
+                return matchesDate && matchesStatus;
             });
             displayAppointments(filtered);
         }
@@ -234,7 +231,13 @@
             checkAuthAndLoadUser();
             loadAppointments();
             
+            document.getElementById('dateFilter').addEventListener('change', filterAndDisplay);
             document.getElementById('statusFilter').addEventListener('change', filterAndDisplay);
+            document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+                document.getElementById('dateFilter').value = '';
+                document.getElementById('statusFilter').value = '';
+                filterAndDisplay();
+            });
             
             document.querySelector('.close').addEventListener('click', () => {
                 document.getElementById('appointmentActionModal').style.display = 'none';

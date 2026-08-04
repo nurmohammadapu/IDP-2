@@ -74,7 +74,49 @@
 
                 <div class="dashboard-sections">
                     <div class="section">
-                        <h2>Today's Appointments</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                            <h2>Appointments & Schedule</h2>
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label for="dashDateFilter" style="font-weight: 600; font-size: 14px;">Date:</label>
+                                    <input type="date" id="dashDateFilter" class="form-control" style="padding: 6px 10px; font-size: 14px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label for="dashStatusFilter" style="font-weight: 600; font-size: 14px;">Status:</label>
+                                    <select id="dashStatusFilter" class="form-control" style="width: 150px; padding: 6px 10px; font-size: 14px;">
+                                        <option value="">All Statuses</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                                <button id="dashClearFiltersBtn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px;">Clear</button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="filteredAppointmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Contact</th>
+                                        <th>Reason/Notes</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" class="loading">Loading appointments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Today's Appointments Summary</h2>
                         <div class="table-container">
                             <table id="todayAppointmentsTable">
                                 <thead>
@@ -83,29 +125,6 @@
                                         <th>Patient</th>
                                         <th>Contact</th>
                                         <th>Reason</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="6" class="loading">Loading appointments...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <h2>Upcoming Appointments</h2>
-                        <div class="table-container">
-                            <table id="upcomingAppointmentsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Time</th>
-                                        <th>Patient</th>
-                                        <th>Contact</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -162,6 +181,7 @@
     <script src="scripts.js"></script>
     <script>
         let currentUser = null;
+        let allAppointments = [];
 
         // Load doctor dashboard data
         async function loadDashboardData() {
@@ -179,8 +199,9 @@
                     // Load today's appointments
                     displayTodayAppointments(data.todayAppointmentsList || []);
                     
-                    // Load upcoming appointments
-                    displayUpcomingAppointments(data.upcomingAppointmentsList || []);
+                    // Store all appointments for filtering
+                    allAppointments = data.allAppointmentsList || [];
+                    filterAndDisplayDashboardAppointments();
                 } else {
                     showToast('Failed to load dashboard data', 'error');
                 }
@@ -189,7 +210,56 @@
             }
         }
 
-        // Display today's appointments
+        // Filter and display appointments on dashboard
+        function filterAndDisplayDashboardAppointments() {
+            const dateVal = document.getElementById('dashDateFilter').value;
+            const statusVal = document.getElementById('dashStatusFilter').value;
+
+            const filtered = allAppointments.filter(app => {
+                const matchesDate = !dateVal || app.appointment_date === dateVal;
+                const matchesStatus = !statusVal || app.status === statusVal;
+                return matchesDate && matchesStatus;
+            });
+
+            displayFilteredAppointments(filtered);
+        }
+
+        // Display filtered appointments in table
+        function displayFilteredAppointments(appointments) {
+            const tbody = document.querySelector('#filteredAppointmentsTable tbody');
+            tbody.innerHTML = '';
+
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No appointments found matching filters</td></tr>';
+                return;
+            }
+
+            appointments.forEach(appointment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(appointment.appointment_date)}</td>
+                    <td>${appointment.appointment_time}</td>
+                    <td>${appointment.patient_name}</td>
+                    <td>${appointment.patient_contact}</td>
+                    <td>${appointment.notes || '-'}</td>
+                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}')">Update</button>
+                        ${appointment.status === 'pending' ? 
+                            `<button class="btn btn-sm btn-success" onclick="confirmAppointment(${appointment.id})">Confirm</button>` : 
+                            ''
+                        }
+                        ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? 
+                            `<button class="btn btn-sm btn-success" onclick="markCompleted(${appointment.id})">Complete</button>` : 
+                            ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Display today's appointments summary
         function displayTodayAppointments(appointments) {
             const tbody = document.querySelector('#todayAppointmentsTable tbody');
             tbody.innerHTML = '';
@@ -209,38 +279,8 @@
                     <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}')">Update</button>
-                        ${appointment.status !== 'completed' ? 
+                        ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? 
                             `<button class="btn btn-sm btn-success" onclick="markCompleted(${appointment.id})">Complete</button>` : 
-                            ''
-                        }
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Display upcoming appointments
-        function displayUpcomingAppointments(appointments) {
-            const tbody = document.querySelector('#upcomingAppointmentsTable tbody');
-            tbody.innerHTML = '';
-            
-            if (appointments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No upcoming appointments</td></tr>';
-                return;
-            }
-            
-            appointments.forEach(appointment => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${formatDate(appointment.appointment_date)}</td>
-                    <td>${appointment.appointment_time}</td>
-                    <td>${appointment.patient_name}</td>
-                    <td>${appointment.patient_contact}</td>
-                    <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick="updateAppointment(${appointment.id}, '${appointment.patient_name}')">Update</button>
-                        ${appointment.status === 'pending' ? 
-                            `<button class="btn btn-sm btn-success" onclick="confirmAppointment(${appointment.id})">Confirm</button>` : 
                             ''
                         }
                     </td>
@@ -331,6 +371,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthAndLoadUser();
             loadDashboardData();
+
+            // Filter event listeners
+            document.getElementById('dashDateFilter').addEventListener('change', filterAndDisplayDashboardAppointments);
+            document.getElementById('dashStatusFilter').addEventListener('change', filterAndDisplayDashboardAppointments);
+            document.getElementById('dashClearFiltersBtn').addEventListener('click', () => {
+                document.getElementById('dashDateFilter').value = '';
+                document.getElementById('dashStatusFilter').value = '';
+                filterAndDisplayDashboardAppointments();
+            });
             
             // Modal close
             document.querySelector('.close').addEventListener('click', () => {
