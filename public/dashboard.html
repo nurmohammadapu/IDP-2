@@ -125,7 +125,7 @@
                                 <td>${appointment.patient_name}</td>
                                 <td>${appointment.doctor_name}</td>
                                 <td>${formatDate(appointment.appointment_date)}</td>
-                                <td>${appointment.appointment_time}</td>
+                                <td>${formatTime12(appointment.appointment_time)}</td>
                                 <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
                             `;
                             tbody.appendChild(row);

@@ -21,6 +21,20 @@ function formatDate(dateString) {
   })
 }
 
+// Format time function (12-hour format with AM/PM)
+function formatTime12(time24) {
+  if (!time24) return '-'
+  // If already formatted with AM/PM, return as is
+  if (time24.includes('AM') || time24.includes('PM')) return time24
+  const [hStr, mStr] = time24.split(':')
+  if (!hStr || !mStr) return time24
+  let h = parseInt(hStr, 10)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  h = h % 12
+  if (h === 0) h = 12
+  return `${String(h).padStart(2, '0')}:${mStr} ${ampm}`
+}
+
 // Check authentication and load user info
 async function checkAuthAndLoadUser() {
   try {

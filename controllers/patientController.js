@@ -12,13 +12,22 @@ async function getDashboardData(req, res) {
 
     const db = getDB()
 
-    // Find patient record linking to this user
+    // Find patient record linking to this user by user_id or phone contact
     let patient = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM patients WHERE user_id = ?", [user.id], (err, row) => {
-        if (err) reject(err)
-        else resolve(row)
-      })
+      db.get(
+        "SELECT * FROM patients WHERE user_id = ? OR contact = ? OR REPLACE(contact, ' ', '') = ?",
+        [user.id, user.phone, user.phone ? user.phone.replace(/\s+/g, '') : ''],
+        (err, row) => {
+          if (err) reject(err)
+          else resolve(row)
+        }
+      )
     })
+
+    if (patient && !patient.user_id) {
+      // Link user_id if missing
+      await new Promise((resolve) => db.run("UPDATE patients SET user_id = ? WHERE id = ?", [user.id, patient.id], () => resolve()))
+    }
 
     if (!patient) {
       console.log(`Self-healing: Creating default patient record for user_id ${user.id}`);

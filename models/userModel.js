@@ -212,9 +212,10 @@ async function findUserByEmailOrPhone(identifier) {
   try {
     const db = getDB()
     const get = promisify(db.get).bind(db)
+    const cleanId = String(identifier).trim().replace(/\s+/g, '')
     const row = await get(
-      "SELECT * FROM users WHERE email = ? OR phone = ?",
-      [identifier, identifier]
+      "SELECT * FROM users WHERE email = ? OR phone = ? OR REPLACE(phone, ' ', '') = ?",
+      [identifier, cleanId, cleanId]
     )
     return row
   } catch (err) {

@@ -1,6 +1,7 @@
 const {
   createUser,
   findUserByEmail,
+  findUserByEmailOrPhone,
   findUserById,
   verifyPassword,
   updateUserProfile,
@@ -101,10 +102,10 @@ async function login(req, res) {
     const { email, password } = req.body
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" })
+      return res.status(400).json({ error: "Email or phone number and password are required" })
     }
 
-    const user = await findUserByEmail(email)
+    const user = await findUserByEmailOrPhone(email)
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" })
     }

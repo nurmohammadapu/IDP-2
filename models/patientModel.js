@@ -1,15 +1,53 @@
 const { promisify } = require("util")
 const { getDB } = require("../db")
 
-// Create a new patient record
+// Create a new patient record (and auto-create linked user account if missing)
 async function createPatient(patientData) {
   try {
     const db = getDB()
+    const get = promisify(db.get).bind(db)
     const run = promisify(db.run).bind(db)
     const { name, age, gender, contact, address, medical_history } = patientData
-    const sql = `INSERT INTO patients (name, age, gender, contact, address, medical_history, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    const result = await run(sql, [name, age, gender, contact, address, medical_history || ""])
+
+    // Clean phone number (strip spaces/dashes)
+    const cleanPhone = String(contact).trim().replace(/\s+/g, '')
+
+    // Check if user already exists with this phone or email
+    let existingUser = await get(
+      "SELECT * FROM users WHERE phone = ? OR email = ? OR REPLACE(phone, ' ', '') = ?",
+      [cleanPhone, cleanPhone, cleanPhone]
+    )
+    let userId = null
+
+    const crypto = require("crypto")
+    const hashedPassword = crypto.createHash("sha256").update(cleanPhone).digest("hex")
+
+    if (existingUser) {
+      userId = existingUser.id
+      // Ensure phone and password are set to cleanPhone if needed
+      await run(
+        "UPDATE users SET phone = COALESCE(phone, ?), password = ? WHERE id = ?",
+        [cleanPhone, hashedPassword, userId]
+      )
+    } else {
+      // Auto-create user account for patient using contact as password
+      const dummyEmail = `patient_${cleanPhone.replace(/[^0-9]/g, '')}@hospital.local`
+
+      // Check if dummyEmail exists
+      let emailUser = await get("SELECT * FROM users WHERE email = ?", [dummyEmail])
+      if (emailUser) {
+        userId = emailUser.id
+        await run("UPDATE users SET phone = ?, password = ? WHERE id = ?", [cleanPhone, hashedPassword, userId])
+      } else {
+        const userSql = "INSERT INTO users (name, email, password, role, phone, address, gender, status, created_at) VALUES (?, ?, ?, 'patient', ?, ?, ?, 'active', datetime('now'))"
+        const userResult = await run(userSql, [name, dummyEmail, hashedPassword, cleanPhone, address || "", gender || ""])
+        userId = userResult.lastID
+      }
+    }
+
+    const sql = `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    const result = await run(sql, [userId, name, age, gender, cleanPhone, address, medical_history || ""])
     return result.lastID
   } catch (err) {
     console.error("createPatient database error:", err)

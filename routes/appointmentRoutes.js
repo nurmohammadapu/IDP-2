@@ -1,7 +1,8 @@
 const createHttpApp = require("../httpHelper")
 const router = createHttpApp.Router()
-const { getAll, getById, create, update, deleteAppointmentById } = require("../controllers/appointmentController")
+const { getAll, getById, create, update, deleteAppointmentById, getAvailableSlots } = require("../controllers/appointmentController")
 
+router.get("/slots", getAvailableSlots)
 router.get("/", getAll)
 router.post("/", create)
 router.get("/:id", getById)

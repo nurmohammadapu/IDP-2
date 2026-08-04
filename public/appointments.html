@@ -135,8 +135,10 @@
             <input type="date" id="appointmentDate" name="appointment_date" required>
             </div>
             <div class="form-group">
-            <label for="appointmentTime">Time *</label>
-            <input type="time" id="appointmentTime" name="appointment_time" required>
+            <label for="appointmentTime">Time Slot *</label>
+            <select id="appointmentTime" name="appointment_time" required>
+                <option value="">Select doctor & date first...</option>
+            </select>
             </div>
         </div>
 
@@ -182,7 +184,7 @@
 
 
     // Fetch search results from API and display options
-    async function fetchAndShowOptions(apiUrl, query, inputEl, optionsDiv, hiddenInput) {
+    async function fetchAndShowOptions(apiUrl, query, inputEl, optionsDiv, hiddenInput, onSelectCallback) {
         if (!query || query.length < 2) {
             optionsDiv.style.display = 'none';
             hiddenInput.value = ''; // clear selection if query too short
@@ -215,6 +217,7 @@
                         }
                         hiddenInput.value = item.id;
                         optionsDiv.style.display = 'none';
+                        if (onSelectCallback) onSelectCallback(item);
                     });
                     optionsDiv.appendChild(div);
                 });
@@ -280,7 +283,7 @@
                 <td>${appointment.patient_name}</td>
                 <td>${appointment.doctor_name}</td>
                 <td>${formatDate(appointment.appointment_date)}</td>
-                <td>${appointment.appointment_time}</td>
+                <td>${formatTime12(appointment.appointment_time)}</td>
                 <td><span class="status status-${appointment.status}">${appointment.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-secondary" onclick="editAppointment(${appointment.id})">Edit</button>
@@ -338,7 +341,9 @@
         document.getElementById('doctor_id').value = appointment.doctor_id;
 
         document.getElementById('appointmentDate').value = appointment.appointment_date;
-        document.getElementById('appointmentTime').value = appointment.appointment_time;
+        if (typeof updateAvailableSlots === 'function') {
+            updateAvailableSlots(appointment.appointment_time);
+        }
         document.getElementById('appointmentStatus').value = appointment.status;
         document.getElementById('appointmentNotes').value = appointment.notes || '';
         document.getElementById('appointmentModal').style.display = 'block';
@@ -497,6 +502,52 @@
         const doctorInput = document.getElementById('doctorSearchInput');
         const doctorOptions = document.getElementById('doctorOptions');
         const doctorHidden = document.getElementById('doctor_id');
+        const appointmentDate = document.getElementById('appointmentDate');
+        const appointmentTimeSelect = document.getElementById('appointmentTime');
+
+        // Function to fetch available slots based on selected doctor & date
+        window.updateAvailableSlots = async function(selectedTime = null) {
+            const doctorId = doctorHidden.value;
+            const date = appointmentDate.value;
+
+            if (!doctorId || !date) {
+                appointmentTimeSelect.innerHTML = '<option value="">Select doctor & date first...</option>';
+                return;
+            }
+
+            appointmentTimeSelect.innerHTML = '<option value="">Loading slots...</option>';
+
+            try {
+                const response = await fetch(`/api/appointments/slots?doctor_id=${doctorId}&date=${date}`);
+                const slots = await response.json();
+
+                if (response.ok) {
+                    appointmentTimeSelect.innerHTML = '<option value="">Select time slot...</option>';
+                    slots.forEach(slot => {
+                        const opt = document.createElement('option');
+                        opt.value = slot.time;
+                        if (slot.isBooked && slot.time !== selectedTime) {
+                            opt.textContent = `${slot.display} - [Booked]`;
+                            opt.disabled = true;
+                        } else {
+                            opt.textContent = `${slot.display} - [Serial #${slot.serial}]`;
+                        }
+                        if (slot.time === selectedTime) {
+                            opt.selected = true;
+                        }
+                        appointmentTimeSelect.appendChild(opt);
+                    });
+                } else {
+                    appointmentTimeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                    showToast(slots.error || 'Failed to load slots', 'error');
+                }
+            } catch (error) {
+                appointmentTimeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                showToast('Network error loading slots', 'error');
+            }
+        };
+
+        appointmentDate.addEventListener('change', () => window.updateAvailableSlots());
 
         // Debounced patient search
         const debouncedPatientSearch = debounce(() => {
@@ -505,7 +556,9 @@
 
         // Debounced doctor search
         const debouncedDoctorSearch = debounce(() => {
-            fetchAndShowOptions('/api/doctors', doctorInput.value.trim(), doctorInput, doctorOptions, doctorHidden);
+            fetchAndShowOptions('/api/doctors', doctorInput.value.trim(), doctorInput, doctorOptions, doctorHidden, (selectedDoctor) => {
+                if (window.updateAvailableSlots) window.updateAvailableSlots();
+            });
         }, 300);
 
         // Patient input event
@@ -517,6 +570,7 @@
         // Doctor input event
         doctorInput.addEventListener('input', () => {
             doctorHidden.value = '';
+            appointmentTimeSelect.innerHTML = '<option value="">Select doctor & date first...</option>';
             debouncedDoctorSearch();
         });
 

@@ -307,19 +307,21 @@ async function getAvailableSlots(req, res) {
 
     const db = getDB()
     const doctor = await new Promise((resolve) => {
-      db.get("SELECT schedule FROM doctors WHERE id = ?", [doctor_id], (err, row) => resolve(row))
+      db.get("SELECT * FROM doctors WHERE id = ? OR user_id = ?", [doctor_id, doctor_id], (err, row) => resolve(row))
     })
 
-    if (!doctor) {
-      return res.status(404).json({ error: "Doctor not found" })
-    }
+    let scheduleStr = (doctor && doctor.schedule && doctor.schedule !== "Not scheduled yet") 
+      ? doctor.schedule 
+      : "Sat-Wed: 9AM-5PM"
 
-    const allSlots = generateSlots(doctor.schedule)
+    const allSlots = generateSlots(scheduleStr)
+
+    const targetDocId = doctor ? doctor.id : doctor_id
 
     const bookedAppointments = await new Promise((resolve, reject) => {
       db.all(
         "SELECT appointment_time FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND status != 'cancelled'",
-        [doctor_id, date],
+        [targetDocId, date],
         (err, rows) => {
           if (err) reject(err)
           else resolve(rows || [])
