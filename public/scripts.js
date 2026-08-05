@@ -47,6 +47,7 @@ async function checkAuthAndLoadUser() {
       const allowedPages = {
         admin: ['dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'advanced.html', 'tests.html'],
         receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html'],
+        doctor_assistant: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'reports.html', 'settings.html'],
         doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'settings.html'],
         patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html'],
         accountant: ['dashboard.html', 'billing.html', 'reports.html', 'settings.html']
@@ -68,6 +69,7 @@ async function checkAuthAndLoadUser() {
           // Redirect unauthorized roles to their dashboard
           if (user.role === 'admin') window.location.href = 'dashboard.html'
           else if (user.role === 'receptionist') window.location.href = 'dashboard.html'
+          else if (user.role === 'doctor_assistant') window.location.href = 'dashboard.html'
           else if (user.role === 'doctor') window.location.href = 'doctor-dashboard.html'
           else if (user.role === 'patient') window.location.href = 'patient-dashboard.html'
           else if (user.role === 'accountant') window.location.href = 'dashboard.html'
@@ -157,6 +159,15 @@ function renderDynamicSidebar(role) {
       { href: 'reports.html', text: '📈 Reports' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
+  } else if (role === 'doctor_assistant') {
+    menuItems = [
+      { href: 'dashboard.html', text: '📊 Dashboard' },
+      { href: 'patients.html', text: '👥 Patients' },
+      { href: 'doctors.html', text: '👨‍⚕️ Doctors' },
+      { href: 'appointments.html', text: '📅 Appointments' },
+      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'settings.html', text: '⚙️ Settings' }
+    ]
   } else if (role === 'doctor') {
     menuItems = [
       { href: 'doctor-dashboard.html', text: '📊 Dashboard' },
@@ -207,6 +218,7 @@ function renderDynamicSidebar(role) {
     
     if (role === 'admin') roleSub.textContent = 'Admin Portal'
     else if (role === 'receptionist') roleSub.textContent = 'Receptionist Portal'
+    else if (role === 'doctor_assistant') roleSub.textContent = 'Doctor Assistant (Compounder)'
     else if (role === 'doctor') roleSub.textContent = 'Doctor Portal'
     else if (role === 'patient') roleSub.textContent = 'Patient Portal'
     else if (role === 'accountant') roleSub.textContent = 'Accountant Portal'

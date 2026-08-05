@@ -70,6 +70,20 @@
                             <p>Completed Today</p>
                         </div>
                     </div>
+                    <div class="stat-card" style="border-left: 4px solid #10b981;">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <h3 id="todayIncome">৳0.00</h3>
+                            <p>Today's Income</p>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #059669;">
+                        <div class="stat-icon">💵</div>
+                        <div class="stat-info">
+                            <h3 id="totalIncome">৳0.00</h3>
+                            <p>Total Visit Income</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="dashboard-sections">
@@ -195,6 +209,10 @@
                     document.getElementById('totalPatients').textContent = data.totalPatients || 0;
                     document.getElementById('upcomingAppointments').textContent = data.upcomingAppointments || 0;
                     document.getElementById('completedToday').textContent = data.completedToday || 0;
+                    document.getElementById('todayIncome').textContent = `৳${parseFloat(data.todayIncome || 0).toFixed(2)}`;
+                    if (document.getElementById('totalIncome')) {
+                        document.getElementById('totalIncome').textContent = `৳${parseFloat(data.totalIncome || 0).toFixed(2)}`;
+                    }
                     
                     // Load today's appointments
                     displayTodayAppointments(data.todayAppointmentsList || []);

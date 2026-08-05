@@ -129,11 +129,39 @@ async function getDashboardData(req, res) {
       )
     })
 
+    // Today's total income calculation (sum of confirmed visit fees or advanced bills)
+    const todayIncome = await new Promise((resolve) => {
+      db.get(
+        `SELECT (
+           COALESCE((SELECT SUM(bp.amount) FROM bill_payments bp JOIN advanced_bills ab ON bp.bill_id = ab.id WHERE ab.doctor_id = ? AND date(bp.payment_date) = date('now','localtime')), 0)
+           +
+           COALESCE((SELECT SUM(COALESCE(d.visit_fee, 0)) FROM appointments a JOIN doctors d ON a.doctor_id = d.id WHERE a.doctor_id = ? AND a.status = 'confirmed' AND date(a.appointment_date) = date('now','localtime') AND NOT EXISTS (SELECT 1 FROM advanced_bills ab WHERE ab.appointment_id = a.id)), 0)
+         ) as total`,
+        [doctorId, doctorId],
+        (err, row) => resolve((row && row.total) ? row.total : 0)
+      )
+    })
+
+    // Total lifetime/overall income for doctor
+    const totalIncome = await new Promise((resolve) => {
+      db.get(
+        `SELECT (
+           COALESCE((SELECT SUM(bp.amount) FROM bill_payments bp JOIN advanced_bills ab ON bp.bill_id = ab.id WHERE ab.doctor_id = ?), 0)
+           +
+           COALESCE((SELECT SUM(COALESCE(d.visit_fee, 0)) FROM appointments a JOIN doctors d ON a.doctor_id = d.id WHERE a.doctor_id = ? AND a.status = 'confirmed' AND NOT EXISTS (SELECT 1 FROM advanced_bills ab WHERE ab.appointment_id = a.id)), 0)
+         ) as total`,
+        [doctorId, doctorId],
+        (err, row) => resolve((row && row.total) ? row.total : 0)
+      )
+    })
+
     return res.json({
       todayAppointments: todayAppointmentsCount,
       totalPatients: totalPatientsCount,
       upcomingAppointments: upcomingAppointmentsCount,
       completedToday: completedTodayCount,
+      todayIncome: todayIncome || 0,
+      totalIncome: totalIncome || 0,
       todayAppointmentsList,
       upcomingAppointmentsList,
       allAppointmentsList,

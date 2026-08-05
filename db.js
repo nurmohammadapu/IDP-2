@@ -183,6 +183,16 @@ function createTables() {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       )`,
 
+      // Doctor assistant mapping table
+      `CREATE TABLE IF NOT EXISTS doctor_assistants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        assistant_user_id INTEGER UNIQUE NOT NULL,
+        doctor_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (assistant_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
+      )`,
+
       // Audit logs
       `CREATE TABLE IF NOT EXISTS audit_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

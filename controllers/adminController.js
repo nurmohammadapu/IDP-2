@@ -185,10 +185,80 @@ async function remove(req, res) {
   }
 }
 
+async function getAssistants(req, res) {
+  try {
+    const adminUser = await getAuthenticatedUser(req)
+    if (!adminUser || adminUser.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Admin only." })
+    }
+
+    const db = getDB()
+    const sql = `
+      SELECT da.id, da.assistant_user_id, da.doctor_id, u.name as assistant_name, u.email as assistant_email, u.phone as assistant_phone, d.name as doctor_name
+      FROM doctor_assistants da
+      JOIN users u ON da.assistant_user_id = u.id
+      JOIN doctors d ON da.doctor_id = d.id
+    `
+    db.all(sql, [], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message })
+      return res.json(rows || [])
+    })
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
+async function assignAssistant(req, res) {
+  try {
+    const adminUser = await getAuthenticatedUser(req)
+    if (!adminUser || adminUser.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Admin only." })
+    }
+
+    const { assistant_user_id, doctor_id } = req.body
+    if (!assistant_user_id || !doctor_id) {
+      return res.status(400).json({ error: "Assistant user and doctor are required" })
+    }
+
+    const db = getDB()
+    db.run(
+      "INSERT INTO doctor_assistants (assistant_user_id, doctor_id) VALUES (?, ?) ON CONFLICT(assistant_user_id) DO UPDATE SET doctor_id = EXCLUDED.doctor_id",
+      [assistant_user_id, doctor_id],
+      function (err) {
+        if (err) return res.status(400).json({ error: err.message })
+        return res.json({ message: "Assistant assigned successfully", id: this.lastID })
+      }
+    )
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
+async function removeAssistant(req, res) {
+  try {
+    const adminUser = await getAuthenticatedUser(req)
+    if (!adminUser || adminUser.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Admin only." })
+    }
+
+    const { id } = req.params
+    const db = getDB()
+    db.run("DELETE FROM doctor_assistants WHERE id = ?", [id], function (err) {
+      if (err) return res.status(500).json({ error: err.message })
+      return res.json({ message: "Assistant unassigned successfully" })
+    })
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
 module.exports = {
   getAll,
   create,
   update,
   changeStatus,
-  remove
+  remove,
+  getAssistants,
+  assignAssistant,
+  removeAssistant
 }

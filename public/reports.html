@@ -182,7 +182,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    if (window.currentUser && window.currentUser.role === 'accountant') {
+                    if (window.currentUser && (window.currentUser.role === 'accountant' || window.currentUser.role === 'doctor_assistant')) {
                         document.getElementById('pendingCardTitle').textContent = "Today's Collection (To Deposit)";
                         document.getElementById('pendingPayments').className = "amount";
                         const breakdownSec = document.getElementById('visitBreakdownSection');

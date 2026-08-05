@@ -142,13 +142,19 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="appointmentStatus">Status</label>
-            <select id="appointmentStatus" name="status">
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-            </select>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="appointmentStatus">Status</label>
+                <select id="appointmentStatus" name="status">
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="form-group" id="visitFeeGroup">
+                <label for="visitFeeCollected">Visit Fee Collection (৳)</label>
+                <input type="number" id="visitFeeCollected" name="visit_fee" min="0" step="10" placeholder="e.g. 500">
+            </div>
         </div>
 
         <div class="form-group">
@@ -313,6 +319,7 @@
         document.getElementById('doctor_id').value = '';
 
         document.getElementById('appointmentStatus').value = 'pending';
+        document.getElementById('visitFeeCollected').value = '';
 
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('appointmentDate').min = today;
@@ -555,9 +562,12 @@
         }, 300);
 
         // Debounced doctor search
-        const debouncedDoctorSearch = debounce(() => {
-            fetchAndShowOptions('/api/doctors', doctorInput.value.trim(), doctorInput, doctorOptions, doctorHidden, (selectedDoctor) => {
-                if (window.updateAvailableSlots) window.updateAvailableSlots();
+        const debouncedDoctorSearch = debounce((query) => {
+            fetchAndShowOptions('/api/doctors', query, doctorInput, doctorOptions, doctorHidden, (selectedDoctor) => {
+                if (selectedDoctor && selectedDoctor.visit_fee) {
+                    document.getElementById('visitFeeCollected').value = selectedDoctor.visit_fee;
+                }
+                updateAvailableSlots();
             });
         }, 300);
 

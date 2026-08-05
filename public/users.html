@@ -37,6 +37,7 @@
                         <option value="">All Roles</option>
                         <option value="admin">Admin</option>
                         <option value="doctor">Doctor</option>
+                        <option value="doctor_assistant">Doctor Assistant</option>
                         <option value="receptionist">Receptionist</option>
                         <option value="patient">Patient</option>
                         <option value="accountant">Accountant</option>
@@ -48,6 +49,7 @@
                         <option value="inactive">Inactive</option>
                     </select>
                     <button id="addUserBtn" class="btn btn-primary">Add User</button>
+                    <button id="manageAssistantsBtn" class="btn btn-secondary" style="background: #4f46e5; color: white;">🩺 Assign Assistant</button>
                 </div>
             </header>
 
@@ -138,6 +140,7 @@
                             <option value="">Select role...</option>
                             <option value="admin">Admin</option>
                             <option value="doctor">Doctor</option>
+                            <option value="doctor_assistant">Doctor Assistant (Compounder)</option>
                             <option value="receptionist">Receptionist</option>
                             <option value="patient">Patient</option>
                             <option value="accountant">Accountant</option>
@@ -229,6 +232,7 @@
                         <select id="editRole" name="role" required>
                             <option value="admin">Admin</option>
                             <option value="doctor">Doctor</option>
+                            <option value="doctor_assistant">Doctor Assistant</option>
                             <option value="receptionist">Receptionist</option>
                             <option value="patient">Patient</option>
                             <option value="accountant">Accountant</option>
@@ -248,6 +252,52 @@
                     <button type="submit" class="btn btn-primary">Update User</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Manage Doctor Assistants Modal -->
+    <div id="assistantsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Doctor Assistant (Compounder) Assignments</h2>
+                <span class="close" onclick="closeModal('assistantsModal')">&times;</span>
+            </div>
+            <div style="padding: 1rem 0;">
+                <form id="assignAssistantForm" style="display: flex; gap: 1rem; align-items: flex-end; background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label for="assistantSelect">Select Assistant User *</label>
+                        <select id="assistantSelect" required style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%;">
+                            <option value="">Choose Assistant...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label for="doctorAssignSelect">Assign to Doctor *</label>
+                        <select id="doctorAssignSelect" required style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%;">
+                            <option value="">Choose Doctor...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="height: 40px;">Assign Assistant</button>
+                </form>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">Active Assistant Assignments</h3>
+                <div class="table-container">
+                    <table id="assistantsTable">
+                        <thead>
+                            <tr>
+                                <th>Assistant Name</th>
+                                <th>Email / Contact</th>
+                                <th>Assigned Doctor</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" class="loading">Loading assignments...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -509,8 +559,118 @@
             window.addEventListener('click', (e) => {
                 if (e.target === document.getElementById('addUserModal')) closeModal('addUserModal');
                 if (e.target === document.getElementById('editUserModal')) closeModal('editUserModal');
+                if (e.target === document.getElementById('assistantsModal')) closeModal('assistantsModal');
             });
+
+            // Assistant management triggers
+            document.getElementById('manageAssistantsBtn').addEventListener('click', openAssistantsModal);
+            document.getElementById('assignAssistantForm').addEventListener('submit', handleAssignAssistant);
         });
+
+        async function openAssistantsModal() {
+            document.getElementById('assistantsModal').style.display = 'block';
+            await loadAssistantsModalData();
+        }
+
+        async function loadAssistantsModalData() {
+            try {
+                const [assistantsRes, doctorsRes, usersRes] = await Promise.all([
+                    fetch('/api/admin/assistants'),
+                    fetch('/api/doctors'),
+                    fetch('/api/admin/users')
+                ]);
+
+                const assistants = await assistantsRes.json();
+                const doctors = await doctorsRes.json();
+                const users = await usersRes.json();
+
+                // Populate assistant dropdown with users who are doctor_assistant or receptionist
+                const assistantUsers = users.filter(u => u.role === 'doctor_assistant' || u.role === 'receptionist');
+                const assistantSelect = document.getElementById('assistantSelect');
+                assistantSelect.innerHTML = '<option value="">Choose Assistant...</option>';
+                assistantUsers.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${u.name} (${u.role})`;
+                    assistantSelect.appendChild(opt);
+                });
+
+                // Populate doctor dropdown
+                const doctorAssignSelect = document.getElementById('doctorAssignSelect');
+                doctorAssignSelect.innerHTML = '<option value="">Choose Doctor...</option>';
+                doctors.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = `${d.name} (${d.specialty})`;
+                    doctorAssignSelect.appendChild(opt);
+                });
+
+                // Render active assignments table
+                const tbody = document.querySelector('#assistantsTable tbody');
+                tbody.innerHTML = '';
+
+                if (assistants.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="no-data">No active assistant assignments found</td></tr>';
+                    return;
+                }
+
+                assistants.forEach(a => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${a.assistant_name}</td>
+                        <td>${a.assistant_email}</td>
+                        <td><strong>${a.doctor_name}</strong></td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="removeAssistantAssignment(${a.id})">Unassign</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                showToast('Error loading assistant data', 'error');
+            }
+        }
+
+        async function handleAssignAssistant(e) {
+            e.preventDefault();
+            const assistant_user_id = document.getElementById('assistantSelect').value;
+            const doctor_id = document.getElementById('doctorAssignSelect').value;
+
+            try {
+                const response = await fetch('/api/admin/assistants', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assistant_user_id, doctor_id })
+                });
+
+                if (response.ok) {
+                    showToast('Assistant assigned successfully!', 'success');
+                    loadAssistantsModalData();
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to assign assistant', 'error');
+                }
+            } catch (error) {
+                showToast('Network error assigning assistant', 'error');
+            }
+        }
+
+        async function removeAssistantAssignment(id) {
+            if (!confirm('Are you sure you want to remove this assistant assignment?')) return;
+            try {
+                const response = await fetch(`/api/admin/assistants/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    showToast('Assignment removed successfully!', 'success');
+                    loadAssistantsModalData();
+                } else {
+                    showToast('Failed to remove assignment', 'error');
+                }
+            } catch (error) {
+                showToast('Network error removing assignment', 'error');
+            }
+        }
     </script>
     <style>
         /* Custom Styles for User Badges */

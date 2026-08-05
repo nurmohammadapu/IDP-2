@@ -138,7 +138,7 @@ async function getFinancialReport(req, res) {
                    LEFT JOIN users u ON bp.created_by = u.id
                    GROUP BY d.id, bp.created_by`
       query5Params = []
-    } else if (user.role === 'accountant') {
+    } else if (user.role === 'accountant' || user.role === 'doctor_assistant') {
       query1Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ?"
       query1Params = [user.id]
 

@@ -9,7 +9,19 @@ const { createAdvancedBill } = require("../models/billingModel")
 
 async function getAll(req, res) {
   try {
-    const appointments = await getAllAppointments()
+    const user = await getAuthenticatedUser(req)
+    let appointments = await getAllAppointments()
+    if (user && user.role === 'doctor_assistant') {
+      const db = getDB()
+      const daRow = await new Promise((resolve) => {
+        db.get("SELECT doctor_id FROM doctor_assistants WHERE assistant_user_id = ?", [user.id], (err, row) => resolve(row))
+      })
+      if (daRow) {
+        appointments = appointments.filter(a => a.doctor_id == daRow.doctor_id)
+      } else {
+        appointments = []
+      }
+    }
     return res.json(appointments)
   } catch (error) {
     console.error("Get appointments error:", error)
@@ -207,7 +219,8 @@ async function create(req, res) {
       serial_number: serialNumber,
     })
 
-    await autoCreateVisitBill(appointmentId, user)
+    const customFee = req.body.visit_fee !== undefined ? parseFloat(req.body.visit_fee) : null
+    await autoCreateVisitBill(appointmentId, user, customFee)
 
     return res.status(201).json({ message: "Appointment created successfully", appointmentId, patientId: patient_id, serialNumber })
   } catch (error) {
@@ -277,7 +290,8 @@ async function update(req, res) {
     })
 
     const user = await getAuthenticatedUser(req)
-    await autoCreateVisitBill(id, user)
+    const customFee = req.body.visit_fee !== undefined ? parseFloat(req.body.visit_fee) : null
+    await autoCreateVisitBill(id, user, customFee)
 
     return res.json({ message: "Appointment updated successfully" })
   } catch (error) {
@@ -306,22 +320,20 @@ async function getAvailableSlots(req, res) {
     }
 
     const db = getDB()
-    const doctor = await new Promise((resolve) => {
-      db.get("SELECT * FROM doctors WHERE id = ? OR user_id = ?", [doctor_id, doctor_id], (err, row) => resolve(row))
+    const doctor = await new Promise((resolve, reject) => {
+      db.get("SELECT schedule FROM doctors WHERE id = ?", [doctor_id], (err, row) => {
+        if (err) reject(err)
+        else resolve(row)
+      })
     })
 
-    let scheduleStr = (doctor && doctor.schedule && doctor.schedule !== "Not scheduled yet") 
-      ? doctor.schedule 
-      : "Sat-Wed: 9AM-5PM"
-
+    let scheduleStr = doctor ? doctor.schedule : null
     const allSlots = generateSlots(scheduleStr)
-
-    const targetDocId = doctor ? doctor.id : doctor_id
 
     const bookedAppointments = await new Promise((resolve, reject) => {
       db.all(
         "SELECT appointment_time FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND status != 'cancelled'",
-        [targetDocId, date],
+        [doctor_id, date],
         (err, rows) => {
           if (err) reject(err)
           else resolve(rows || [])
@@ -345,7 +357,7 @@ async function getAvailableSlots(req, res) {
   }
 }
 
-async function autoCreateVisitBill(appointmentId, user) {
+async function autoCreateVisitBill(appointmentId, user, customFee = null) {
   const db = getDB()
   try {
     const appointment = await new Promise((resolve, reject) => {
@@ -381,17 +393,20 @@ async function autoCreateVisitBill(appointmentId, user) {
 
     if (existingBill) return
 
-    const fee = appointment.visit_fee || 0
+    const fee = (customFee !== null && !isNaN(customFee)) ? customFee : (appointment.visit_fee || 0)
     const created_by = user ? user.id : null
+
+    const todayStr = new Date().toISOString().split('T')[0]
 
     await createAdvancedBill({
       patient_id: appointment.patient_id,
       doctor_id: appointment.doc_id,
       appointment_id: appointmentId,
+      billing_date: appointment.appointment_date || todayStr,
       subtotal: fee,
       discount_type: 'amount',
       discount_value: 0,
-      paid_amount: 0,
+      paid_amount: fee,
       payment_method: 'cash',
       created_by
     })
