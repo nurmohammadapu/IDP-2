@@ -904,6 +904,11 @@ document.addEventListener('click', function(e) {
                 showToast('Please enter valid item name and price', 'warning');
                 return;
             }
+
+            if (currentUser && currentUser.role === 'accountant' && name.toLowerCase() === 'doctor visit') {
+                showToast('Accountants cannot add Doctor Visit fees', 'error');
+                return;
+            }
                         
             selectedItems.push({
                 type: 'manual',
@@ -970,6 +975,11 @@ document.addEventListener('click', function(e) {
             }
                         
             const totalAmount = subtotal - discountAmount;
+            
+            if (currentUser && currentUser.role === 'accountant' && !currentBillId) {
+                document.getElementById('paidAmount').value = Math.max(0, totalAmount);
+            }
+
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
             const dueAmount = totalAmount - paidAmount;
                         
@@ -1000,12 +1010,8 @@ document.addEventListener('click', function(e) {
             updateSelectedItems();
             calculateBillSummary();
 
-            if (currentUser && currentUser.role === 'receptionist') {
-                const manualNameInput = document.getElementById('manualItemName');
-                if (manualNameInput) {
-                    manualNameInput.value = 'Doctor Visit';
-                    manualNameInput.disabled = true;
-                }
+            if (currentUser && currentUser.role === 'accountant') {
+                document.getElementById('paidAmount').value = 0;
             }
 
             document.getElementById('billingModal').style.display = 'block';

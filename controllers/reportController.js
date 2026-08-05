@@ -138,11 +138,34 @@ async function getFinancialReport(req, res) {
                    LEFT JOIN users u ON bp.created_by = u.id
                    GROUP BY d.id, bp.created_by`
       query5Params = []
-    } else if (user.role === 'accountant' || user.role === 'receptionist') {
+    } else if (user.role === 'accountant') {
       query1Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ?"
       query1Params = [user.id]
 
-      query2Sql = "SELECT SUM(due_amount) as total FROM advanced_bills WHERE due_amount > 0 AND created_by = ?"
+      query2Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ? AND date(payment_date) = date('now','localtime')"
+      query2Params = [user.id]
+
+      query3Sql = `SELECT date(payment_date) as date, SUM(amount) as revenue
+                   FROM bill_payments
+                   WHERE created_by = ? AND payment_date >= date('now','-6 days')
+                   GROUP BY date(payment_date)
+                   ORDER BY date DESC`
+      query3Params = [user.id]
+
+      query4Sql = `SELECT strftime('%Y', payment_date) as year, strftime('%m', payment_date) as month, SUM(amount) as revenue
+                   FROM bill_payments
+                   WHERE created_by = ? AND payment_date >= date('now','start of month','-5 months')
+                   GROUP BY year, month
+                   ORDER BY year DESC, month DESC`
+      query4Params = [user.id]
+
+      query5Sql = "SELECT '' as doctor_name, '' as staff_name, 0 as visit_count, 0 as total_collected WHERE 1=0"
+      query5Params = []
+    } else if (user.role === 'receptionist') {
+      query1Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ?"
+      query1Params = [user.id]
+
+      query2Sql = "SELECT SUM(amount) as total FROM bill_payments WHERE created_by = ? AND date(payment_date) = date('now','localtime')"
       query2Params = [user.id]
 
       query3Sql = `SELECT date(payment_date) as date, SUM(amount) as revenue

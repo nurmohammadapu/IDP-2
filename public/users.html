@@ -31,8 +31,22 @@
         <main class="main-content">
             <header class="main-header">
                 <h1>User Management</h1>
-                <div class="header-actions">
-                    <input type="text" id="searchUsers" placeholder="Search users..." style="padding: 6px 10px; font-size: 14px; margin-right: 10px;">
+                <div class="header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="searchUsers" placeholder="Search users..." style="padding: 7px 12px; font-size: 14px; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+                    <select id="roleFilter" style="padding: 7px 12px; font-size: 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: 'Inter', sans-serif;">
+                        <option value="">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="receptionist">Receptionist</option>
+                        <option value="patient">Patient</option>
+                        <option value="accountant">Accountant</option>
+                    </select>
+                    <select id="statusFilter" style="padding: 7px 12px; font-size: 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: 'Inter', sans-serif;">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
                     <button id="addUserBtn" class="btn btn-primary">Add User</button>
                 </div>
             </header>
@@ -269,11 +283,19 @@
 
         function filterAndDisplay() {
             const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+            const roleTerm = document.getElementById('roleFilter').value;
+            const statusTerm = document.getElementById('statusFilter').value;
+
             const filtered = allUsers.filter(user => {
-                return user.name.toLowerCase().includes(searchTerm) || 
+                const matchesSearch = !searchTerm || 
+                       user.name.toLowerCase().includes(searchTerm) || 
                        user.email.toLowerCase().includes(searchTerm) || 
-                       user.role.toLowerCase().includes(searchTerm) ||
-                       user.status.toLowerCase().includes(searchTerm);
+                       (user.phone && user.phone.includes(searchTerm));
+                
+                const matchesRole = !roleTerm || user.role === roleTerm;
+                const matchesStatus = !statusTerm || user.status === statusTerm;
+
+                return matchesSearch && matchesRole && matchesStatus;
             });
             displayUsers(filtered);
         }
@@ -373,6 +395,8 @@
             loadUsers();
 
             document.getElementById('searchUsers').addEventListener('input', filterAndDisplay);
+            document.getElementById('roleFilter').addEventListener('change', filterAndDisplay);
+            document.getElementById('statusFilter').addEventListener('change', filterAndDisplay);
             
             // Add user button trigger modal
             document.getElementById('addUserBtn').addEventListener('click', () => {

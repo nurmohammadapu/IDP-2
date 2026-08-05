@@ -58,6 +58,13 @@ async function createAdvanced(req, res) {
       }
     }
 
+    if (user && user.role === 'accountant') {
+      const hasDoctorVisit = items.some(item => item.name === 'Doctor Visit')
+      if (hasDoctorVisit) {
+        return res.status(400).json({ error: "Accountants are only authorized for test-related bills and cannot add Doctor Visit fees" })
+      }
+    }
+
     const billId = await createAdvancedBill({
       patient_id,
       billing_date,
@@ -98,6 +105,13 @@ async function updateAdvanced(req, res) {
       const hasForbiddenItem = items.some(item => item.name !== 'Doctor Visit')
       if (hasForbiddenItem) {
         return res.status(400).json({ error: "Receptionists are only authorized to collect Doctor Visit fees" })
+      }
+    }
+
+    if (user && user.role === 'accountant') {
+      const hasDoctorVisit = items.some(item => item.name === 'Doctor Visit')
+      if (hasDoctorVisit) {
+        return res.status(400).json({ error: "Accountants are only authorized for test-related bills and cannot add Doctor Visit fees" })
       }
     }
 

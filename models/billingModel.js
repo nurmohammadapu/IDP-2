@@ -105,11 +105,22 @@ async function getAllAdvancedBills(user) {
     const all = promisify(db.all).bind(db)
     const get = promisify(db.get).bind(db)
 
-    if (!user || user.role === 'admin' || user.role === 'accountant' || user.role === 'receptionist') {
+    if (!user || user.role === 'admin' || user.role === 'receptionist') {
       const sql = `
         SELECT ab.*, p.name as patient_name, p.contact as patient_contact 
         FROM advanced_bills ab 
         JOIN patients p ON ab.patient_id = p.id 
+        ORDER BY ab.id DESC
+      `
+      return await all(sql, [])
+    } else if (user.role === 'accountant') {
+      // Accountants see only bills that contain test items / non-Doctor Visit items
+      const sql = `
+        SELECT DISTINCT ab.*, p.name as patient_name, p.contact as patient_contact 
+        FROM advanced_bills ab 
+        JOIN patients p ON ab.patient_id = p.id 
+        JOIN bill_items bi ON ab.id = bi.bill_id
+        WHERE bi.item_name != 'Doctor Visit' AND (bi.item_type = 'test' OR bi.test_id IS NOT NULL OR bi.item_name LIKE '%Test%')
         ORDER BY ab.id DESC
       `
       return await all(sql, [])
