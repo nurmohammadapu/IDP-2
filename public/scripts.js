@@ -208,6 +208,8 @@ function renderDynamicSidebar(role) {
   // Append user role subheader in sidebar-header if missing
   const sidebarHeader = document.querySelector('.sidebar-header')
   if (sidebarHeader) {
+    const h2 = sidebarHeader.querySelector('h2')
+    if (h2) h2.innerHTML = '🔬 DCMS'
     let roleSub = sidebarHeader.querySelector('.user-role')
     if (!roleSub) {
       roleSub = document.createElement('p')

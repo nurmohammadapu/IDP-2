@@ -247,8 +247,8 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h1>🏥 Register</h1>
-                <p>Create your account to access the Hospital Management System</p>
+                <h1>🔬 Register</h1>
+                <p>Create your account to access Diagnostic Center Management System</p>
             </div>
             
             <form id="registerForm">
@@ -265,6 +265,12 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="phone">Phone/Contact Number *</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="01XXXXXXXXX" required>
+                    <div class="error-message" id="phoneError"></div>
+                </div>
+
+                <div class="form-group">
                     <label for="password">Password *</label>
                     <input type="password" id="password" name="password" class="form-control" required minlength="6">
                     <div class="error-message" id="passwordError"></div>
@@ -278,13 +284,6 @@
                 </div>
                 
                 <input type="hidden" name="role" value="patient">
-
-                <!-- Patient Registration Fields -->
-                <div class="form-group">
-                    <label for="phone">Phone/Contact Number *</label>
-                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="01XXXXXXXXX" required>
-                    <div class="error-message" id="phoneError"></div>
-                </div>
 
 
                 
