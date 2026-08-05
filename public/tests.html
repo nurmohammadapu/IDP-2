@@ -157,12 +157,25 @@
 
         // Display tests in table
         function displayTests(testsData) {
+            const isReceptionist = window.currentUser && window.currentUser.role === 'receptionist';
+            
+            if (isReceptionist) {
+                const addBtn = document.getElementById('addTestBtn');
+                if (addBtn) addBtn.style.display = 'none';
+                
+                const actionsTh = document.querySelector('#testsTable thead th:last-child');
+                if (actionsTh && actionsTh.textContent.trim() === 'Actions') {
+                    actionsTh.style.display = 'none';
+                }
+            }
+
             const tbody = document.querySelector('#testsTable tbody');
             tbody.innerHTML = '';
 
             if (testsData.length === 0) {
+                const colSpan = isReceptionist ? 5 : 6;
                 tbody.innerHTML =
-                    '<tr><td colspan="6" class="no-data">No tests found</td></tr>';
+                    `<tr><td colspan="${colSpan}" class="no-data">No tests found</td></tr>`;
                 return;
             }
 
@@ -174,10 +187,11 @@
                     <td>${test.category}</td>
                     <td>৳${parseFloat(test.price).toFixed(2)}</td>
                     <td>${test.description || 'N/A'}</td>
+                    ${isReceptionist ? '' : `
                     <td>
                         <button class="btn btn-sm btn-secondary" onclick="editTest(${test.id})">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteTest(${test.id})">Delete</button>
-                    </td>
+                    </td>`}
                 `;
                 tbody.appendChild(row);
             });

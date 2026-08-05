@@ -91,8 +91,8 @@ async function searchDoctors(query) {
     const all = promisify(db.all).bind(db)
     const searchTerm = `%${query}%`
     const rows = await all(
-      "SELECT * FROM doctors WHERE name LIKE ? OR contact LIKE ? ORDER BY created_at DESC",
-      [searchTerm, searchTerm]
+      "SELECT * FROM doctors WHERE name LIKE ? OR contact LIKE ? OR specialty LIKE ? OR unique_id LIKE ? OR room_number LIKE ? ORDER BY created_at DESC",
+      [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]
     )
     return rows
   } catch (err) {

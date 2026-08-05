@@ -46,7 +46,7 @@ async function checkAuthAndLoadUser() {
       // Page authorization mapping
       const allowedPages = {
         admin: ['dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'advanced.html', 'tests.html'],
-        receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html'],
+        receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'tests.html', 'settings.html'],
         doctor_assistant: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'reports.html', 'settings.html'],
         doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'settings.html'],
         patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html'],
@@ -155,8 +155,7 @@ function renderDynamicSidebar(role) {
       { href: 'patients.html', text: '👥 Patients' },
       { href: 'doctors.html', text: '👨‍⚕️ Doctors' },
       { href: 'appointments.html', text: '📅 Appointments' },
-      { href: 'billing.html', text: '💰 Billing' },
-      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'tests.html', text: '🧪 Tests Price List' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
   } else if (role === 'doctor_assistant') {

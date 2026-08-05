@@ -581,7 +581,8 @@
         doctorInput.addEventListener('input', () => {
             doctorHidden.value = '';
             appointmentTimeSelect.innerHTML = '<option value="">Select doctor & date first...</option>';
-            debouncedDoctorSearch();
+            const query = doctorInput.value.trim();
+            debouncedDoctorSearch(query);
         });
 
         // Hide dropdown options if clicked outside
