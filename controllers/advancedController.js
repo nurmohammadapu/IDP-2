@@ -125,38 +125,27 @@ async function getAuditTrail(req, res) {
   }
 }
 
-// System Statistics
+// System Statistics - Real data from DB
 async function getSystemStats(req, res) {
   try {
     const db = getDB()
 
-    // Active users today
-    const activeUsersRow = await dbGet(
-      db,
-      "SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE date(created_at) = date('now','localtime')"
-    )
-    const activeUsers = activeUsersRow ? activeUsersRow.count : 0
-
-    // Database size: SQLite doesn't have information_schema, so approximate by file size or 0
-    // Here we simply return 0 or "N/A" since it requires fs.stat on DB file outside DB connection
-    const dbSize = "N/A"
-
-    // Recent activities count today
-    const todayActivitiesRow = await dbGet(
-      db,
-      "SELECT COUNT(*) as count FROM audit_logs WHERE date(created_at) = date('now','localtime')"
-    )
-    const todayActivities = todayActivitiesRow ? todayActivitiesRow.count : 0
-
-    // System uptime (mock)
-    const uptime = (99.5 + Math.random() * 0.4).toFixed(1)
+    const patientsRow = await dbGet(db, "SELECT COUNT(*) as count FROM patients")
+    const doctorsRow = await dbGet(db, "SELECT COUNT(*) as count FROM doctors")
+    const appointmentsRow = await dbGet(db, "SELECT COUNT(*) as count FROM appointments")
+    const todayApptRow = await dbGet(db, "SELECT COUNT(*) as count FROM appointments WHERE date(appointment_date) = date('now','localtime')")
+    const revenueRow = await dbGet(db, "SELECT SUM(paid_amount) as total FROM advanced_bills")
+    const auditRow = await dbGet(db, "SELECT COUNT(*) as count FROM audit_logs")
+    const usersRow = await dbGet(db, "SELECT COUNT(*) as count FROM users")
 
     const stats = {
-      activeUsers,
-      dbSize: `${dbSize} MB`,
-      todayActivities,
-      uptime: `${uptime}%`,
-      lastBackup: new Date().toISOString(),
+      totalPatients: patientsRow ? patientsRow.count : 0,
+      totalDoctors: doctorsRow ? doctorsRow.count : 0,
+      totalAppointments: appointmentsRow ? appointmentsRow.count : 0,
+      todayAppointments: todayApptRow ? todayApptRow.count : 0,
+      totalRevenue: revenueRow && revenueRow.total ? revenueRow.total : 0,
+      totalAuditLogs: auditRow ? auditRow.count : 0,
+      totalUsers: usersRow ? usersRow.count : 0,
     }
 
     return res.json(stats)
@@ -172,7 +161,6 @@ async function createSystemBackup(req, res) {
     const db = getDB()
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
 
-    // Tables list remains the same
     const tables = [
       "users",
       "patients",
@@ -183,17 +171,17 @@ async function createSystemBackup(req, res) {
       "bill_items",
       "bill_payments",
       "notifications",
+      "doctor_assistants",
       "audit_logs",
-      "system_settings",
     ]
 
     const backupData = {
-      timestamp,
+      timestamp: new Date().toISOString(),
       version: "1.0",
+      app: "Hospital Management System",
       tables: {},
     }
 
-    // SQLite queries are async, so use Promise.all with map
     const tablePromises = tables.map(async (table) => {
       try {
         const rows = await dbAll(db, `SELECT * FROM ${table}`)
@@ -212,18 +200,71 @@ async function createSystemBackup(req, res) {
       timestamp,
     })
 
+    const filename = `backup_${timestamp}.json`
+    const jsonStr = JSON.stringify(backupData, null, 2)
+
     const result = {
       message: "Backup created successfully",
-      filename: `backup_${timestamp}.json`,
-      size: JSON.stringify(backupData).length,
+      filename: filename,
+      size: Buffer.byteLength(jsonStr, 'utf8'),
       timestamp: new Date().toISOString(),
       tables_backed_up: tables.length,
+      data: backupData
     }
 
     return res.json(result)
   } catch (error) {
     console.error("Create backup error:", error)
     return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
+// Direct Backup File Download Endpoint
+async function downloadBackupFile(req, res) {
+  try {
+    const db = getDB()
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+    const tables = [
+      "users",
+      "patients",
+      "doctors",
+      "appointments",
+      "tests",
+      "advanced_bills",
+      "bill_items",
+      "bill_payments",
+      "notifications",
+      "doctor_assistants",
+      "audit_logs",
+    ]
+
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      app: "Hospital Management System",
+      tables: {},
+    }
+
+    await Promise.all(
+      tables.map(async (table) => {
+        try {
+          const rows = await dbAll(db, `SELECT * FROM ${table}`)
+          backupData.tables[table] = rows
+        } catch (err) {
+          backupData.tables[table] = []
+        }
+      })
+    )
+
+    const filename = `hms_backup_${timestamp}.json`
+    const jsonString = JSON.stringify(backupData, null, 2)
+
+    res.setHeader("Content-Type", "application/json")
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`)
+    return res.end(jsonString)
+  } catch (error) {
+    console.error("Download backup error:", error)
+    return res.status(500).json({ error: "Failed to download backup" })
   }
 }
 
@@ -263,11 +304,11 @@ async function exportData(req, res) {
 
     // Log audit activity
     auditAction(req, "EXPORT", type, null, null, {
-      format,
+      format: format || "csv",
       records_count: data.length,
     })
 
-    if (format === "csv") {
+    if (format === "csv" || !format) {
       const headers = Object.keys(data[0] || {})
       const csv = generateCSV(data, headers)
 
@@ -356,7 +397,6 @@ async function advancedSearch(req, res) {
 // Send test email
 async function sendAppointmentReminder(req, res) {
   try {
-    // Log the email attempt
     auditAction(req, "EMAIL_SENT", "system", null, null, {
       type: "test_reminder",
       timestamp: new Date().toISOString(),
@@ -368,7 +408,7 @@ async function sendAppointmentReminder(req, res) {
         email: "patient@example.com",
         timestamp: new Date().toISOString(),
       })
-    }, 2000)
+    }, 1000)
   } catch (error) {
     console.error("Send reminder error:", error)
     return res.status(500).json({ error: "Internal server error" })
@@ -378,16 +418,15 @@ async function sendAppointmentReminder(req, res) {
 // Get backup list
 async function getBackups(req, res) {
   try {
-    // In real implementation, read from file system
     const demoBackups = [
       {
-        filename: `backup_${new Date().toISOString().split("T")[0]}.json`,
-        size: 1024000,
+        filename: `hms_backup_${new Date().toISOString().split("T")[0]}.json`,
+        size: 48500,
         created_at: new Date().toISOString(),
       },
       {
-        filename: `backup_${new Date(Date.now() - 86400000).toISOString().split("T")[0]}.json`,
-        size: 987000,
+        filename: `hms_backup_${new Date(Date.now() - 86400000).toISOString().split("T")[0]}.json`,
+        size: 42100,
         created_at: new Date(Date.now() - 86400000).toISOString(),
       },
     ]
@@ -405,8 +444,10 @@ module.exports = {
   getAuditTrail,
   getSystemStats,
   createSystemBackup,
+  downloadBackupFile,
   getBackups,
   exportData,
   sendAppointmentReminder,
   advancedSearch,
 }
+

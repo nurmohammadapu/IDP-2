@@ -213,12 +213,6 @@
         <main class="main-content">
             <header class="main-header">
                 <h1>Activity Log</h1>
-                <div class="header-actions">
-                    <button id="notificationBtn" class="btn btn-secondary">
-                        🔔 Notifications
-                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
-                    </button>
-                </div>
             </header>
 
             <div class="content-section" id="mainContent">
@@ -231,7 +225,6 @@
 
     <script src="scripts.js"></script>
     <script>
-        let notifications = [];
         let auditLogs = [];
         let currentUser = null;
 
@@ -305,36 +298,30 @@
                     <!-- System Statistics -->
                     <div class="feature-card">
                         <h3><span class="feature-icon">📊</span> System Statistics</h3>
-                        <p>Real-time system performance and usage metrics.</p>
+                        <p>Real-time database statistics and operational metrics.</p>
                         <div id="systemStats">
                             <div class="stat-item">
-                                <strong>Active Users:</strong> <span id="activeUsers">Loading...</span>
+                                <strong>👥 Total Patients:</strong> <span id="totalPatients">Loading...</span>
                             </div>
                             <div class="stat-item">
-                                <strong>Database Size:</strong> <span id="dbSize">Loading...</span>
+                                <strong>👨‍⚕️ Active Doctors:</strong> <span id="totalDoctors">Loading...</span>
                             </div>
                             <div class="stat-item">
-                                <strong>Today's Activities:</strong> <span id="todayActivities">Loading...</span>
+                                <strong>📅 Total Appointments:</strong> <span id="totalAppointments">Loading...</span> (Today: <span id="todayAppointments">0</span>)
                             </div>
                             <div class="stat-item">
-                                <strong>System Uptime:</strong> <span id="systemUptime">Loading...</span>
+                                <strong>💰 Total Revenue:</strong> ৳<span id="totalRevenue">Loading...</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Notifications -->
-                    <div class="feature-card">
-                        <h3><span class="feature-icon">🔔</span> Notification System</h3>
-                        <p>Real-time notifications for system events and activities.</p>
-                        <div id="notificationsList" style="max-height: 200px; overflow-y: auto;">
-                            <div class="loading">Loading notifications...</div>
+                            <div class="stat-item">
+                                <strong>📋 Audit Logged Actions:</strong> <span id="totalAuditLogs">Loading...</span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Data Export -->
                     <div class="feature-card">
                         <h3><span class="feature-icon">📤</span> Data Export</h3>
-                        <p>Export data in CSV or PDF format for external use.</p>
+                        <p>Export system records in CSV format for external analysis.</p>
                         <div class="export-buttons">
                             <select id="exportType" class="form-control">
                                 <option value="patients">Patients</option>
@@ -343,41 +330,21 @@
                                 <option value="billing">Billing</option>
                             </select>
                         </div>
-                        <div class="export-buttons">
-                            <button id="exportCSV" class="btn btn-success">Export CSV</button>
-                            <button id="exportPDF" class="btn btn-danger">Export PDF</button>
+                        <div class="export-buttons" style="margin-top: 0.75rem;">
+                            <button id="exportCSV" class="btn btn-success" style="width: 100%;">Export CSV</button>
                         </div>
                     </div>
 
                     <!-- Backup System -->
                     <div class="feature-card">
-                        <h3><span class="feature-icon">💾</span> Backup & Restore</h3>
-                        <p>Create and manage system backups for data security.</p>
-                        <button id="createBackupBtn" class="btn btn-primary">Create Backup</button>
+                        <h3><span class="feature-icon">💾</span> Backup JSON</h3>
+                        <p>Create and download instant database JSON backups.</p>
+                        <button id="createBackupBtn" class="btn btn-primary">Create Backup JSON</button>
                         <div class="progress-bar" id="backupProgress" style="display: none;">
                             <div class="progress-fill" id="backupProgressFill" style="width: 0%;"></div>
                         </div>
                         <div id="backupsList" style="margin-top: 1rem;">
                             <div class="loading">Loading backups...</div>
-                        </div>
-                    </div>
-
-                    <!-- Email System -->
-                    <div class="feature-card">
-                        <h3><span class="feature-icon">📧</span> Email Notifications</h3>
-                        <p>Send automated emails for appointments and billing.</p>
-                        <button id="sendReminderBtn" class="btn btn-primary">Send Test Reminder</button>
-                        <div id="emailStatus" style="margin-top: 1rem;"></div>
-                    </div>
-
-                    <!-- Security Features -->
-                    <div class="feature-card">
-                        <h3><span class="feature-icon">🔒</span> Security Center</h3>
-                        <p>Monitor security events and user activities.</p>
-                        <div class="security-stats">
-                            <div>Active Sessions: <strong id="activeSessions">Loading...</strong></div>
-                            <div>Failed Logins: <strong>0</strong></div>
-                            <div>Last Security Scan: <strong>Just now</strong></div>
                         </div>
                     </div>
                 </div>
@@ -415,7 +382,6 @@
 
         // Initialize admin features
         function initializeAdminFeatures() {
-            loadNotifications();
             loadSystemStats();
             loadBackups();
 
@@ -427,13 +393,9 @@
 
             // Export
             document.getElementById('exportCSV').addEventListener('click', () => exportData('csv'));
-            document.getElementById('exportPDF').addEventListener('click', () => exportData('pdf'));
 
             // Backup
             document.getElementById('createBackupBtn').addEventListener('click', createBackup);
-
-            // Email
-            document.getElementById('sendReminderBtn').addEventListener('click', sendTestReminder);
 
             // Audit
             document.getElementById('loadAuditBtn').addEventListener('click', loadAuditTrail);
@@ -454,80 +416,8 @@
                 });
             }
 
-            // Auto-refresh
-            setInterval(loadNotifications, 30000);
-            setInterval(loadSystemStats, 60000);
-        }
-
-        // Load notifications
-        async function loadNotifications() {
-            try {
-                const response = await fetch('/api/advanced/notifications');
-                if (response.ok) {
-                    notifications = await response.json();
-                    displayNotifications();
-                    updateNotificationBadge();
-                }
-            } catch (error) {
-                console.error('Error loading notifications:', error);
-            }
-        }
-
-        // Display notifications
-        function displayNotifications() {
-            const container = document.getElementById('notificationsList');
-            if (!container) return;
-
-            container.innerHTML = '';
-
-            if (notifications.length === 0) {
-                container.innerHTML = '<div class="no-data">No notifications</div>';
-                return;
-            }
-
-            notifications.slice(0, 5).forEach(notification => {
-                const div = document.createElement('div');
-                div.className = `audit-log ${notification.is_read ? '' : 'unread'}`;
-                div.innerHTML = `
-                    <div><strong>${notification.title}</strong></div>
-                    <div>${notification.message}</div>
-                    <div class="timestamp">${formatDate(notification.created_at)}</div>
-                `;
-                if (!notification.is_read) {
-                    div.style.borderLeftColor = '#e74c3c';
-                    div.addEventListener('click', () => markNotificationRead(notification.id));
-                }
-                container.appendChild(div);
-            });
-        }
-
-        // Update notification badge
-        function updateNotificationBadge() {
-            const badge = document.getElementById('notificationBadge');
-            if (!badge) return;
-
-            const unreadCount = notifications.filter(n => !n.is_read).length;
-            
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount;
-                badge.style.display = 'inline';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-
-        // Mark notification as read
-        async function markNotificationRead(id) {
-            try {
-                const response = await fetch(`/api/advanced/notifications/${id}/read`, {
-                    method: 'PUT'
-                });
-                if (response.ok) {
-                    loadNotifications();
-                }
-            } catch (error) {
-                console.error('Error marking notification as read:', error);
-            }
+            // Auto-refresh stats
+            setInterval(loadSystemStats, 30000);
         }
 
         // Load system statistics
@@ -545,19 +435,19 @@
 
         // Update system statistics display
         function updateSystemStats(stats) {
-            const elements = {
-                activeUsers: document.getElementById('activeUsers'),
-                dbSize: document.getElementById('dbSize'),
-                todayActivities: document.getElementById('todayActivities'),
-                systemUptime: document.getElementById('systemUptime'),
-                activeSessions: document.getElementById('activeSessions')
-            };
+            const elPatients = document.getElementById('totalPatients');
+            const elDoctors = document.getElementById('totalDoctors');
+            const elAppointments = document.getElementById('totalAppointments');
+            const elTodayAppt = document.getElementById('todayAppointments');
+            const elRevenue = document.getElementById('totalRevenue');
+            const elAuditLogs = document.getElementById('totalAuditLogs');
 
-            if (elements.activeUsers) elements.activeUsers.textContent = stats.activeUsers || '0';
-            if (elements.dbSize) elements.dbSize.textContent = stats.dbSize || '0 MB';
-            if (elements.todayActivities) elements.todayActivities.textContent = stats.todayActivities || '0';
-            if (elements.systemUptime) elements.systemUptime.textContent = stats.uptime || '99.9%';
-            if (elements.activeSessions) elements.activeSessions.textContent = stats.activeUsers || '0';
+            if (elPatients) elPatients.textContent = stats.totalPatients ?? '0';
+            if (elDoctors) elDoctors.textContent = stats.totalDoctors ?? '0';
+            if (elAppointments) elAppointments.textContent = stats.totalAppointments ?? '0';
+            if (elTodayAppt) elTodayAppt.textContent = stats.todayAppointments ?? '0';
+            if (elRevenue) elRevenue.textContent = (stats.totalRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+            if (elAuditLogs) elAuditLogs.textContent = stats.totalAuditLogs ?? '0';
         }
 
         // Advanced search
@@ -600,7 +490,6 @@
                 return;
             }
 
-            // Create table headers based on type
             const headers = {
                 patients: ['ID', 'Name', 'Age', 'Contact', 'Address'],
                 doctors: ['ID', 'Name', 'Specialty', 'Contact'],
@@ -642,15 +531,15 @@
             container.style.display = 'block';
         }
 
-        // Export data
-        async function exportData(format) {
+        // Export CSV data
+        async function exportData(format = 'csv') {
             const type = document.getElementById('exportType').value;
             
             try {
                 const response = await fetch('/api/advanced/export', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type, format })
+                    body: JSON.stringify({ type, format: 'csv' })
                 });
 
                 if (response.ok) {
@@ -658,15 +547,16 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `${type}_export.${format === 'csv' ? 'csv' : 'html'}`;
+                    a.download = `${type}_export_${Date.now()}.csv`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
                     
-                    showToast(`${format.toUpperCase()} export completed`, 'success');
+                    showToast(`CSV export completed successfully`, 'success');
                 } else {
-                    showToast('Export failed', 'error');
+                    const errData = await response.json().catch(() => ({}));
+                    showToast(errData.error || 'Export failed', 'error');
                 }
             } catch (error) {
                 showToast('Network error during export', 'error');
@@ -683,15 +573,14 @@
             btn.textContent = 'Creating Backup...';
             progress.style.display = 'block';
             
-            // Simulate progress
             let width = 0;
             const interval = setInterval(() => {
-                width += 10;
+                width += 25;
                 progressFill.style.width = width + '%';
                 if (width >= 100) {
                     clearInterval(interval);
                 }
-            }, 200);
+            }, 100);
 
             try {
                 const response = await fetch('/api/advanced/backup', {
@@ -700,7 +589,23 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    showToast('Backup created successfully', 'success');
+
+                    // Trigger direct JSON file download
+                    if (result.data) {
+                        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = result.filename || `backup_${Date.now()}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    } else {
+                        window.location.href = '/api/advanced/backup/download';
+                    }
+
+                    showToast('Backup JSON downloaded successfully', 'success');
                     loadBackups();
                 } else {
                     showToast('Backup failed', 'error');
@@ -709,7 +614,7 @@
                 showToast('Network error during backup', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Create Backup';
+                btn.textContent = 'Create Backup JSON';
                 setTimeout(() => {
                     progress.style.display = 'none';
                     progressFill.style.width = '0%';
@@ -751,43 +656,17 @@
                         <small>${formatDate(backup.created_at)} - ${(backup.size / 1024).toFixed(2)} KB</small>
                     </div>
                     <button class="btn btn-sm btn-secondary" onclick="downloadBackup('${backup.filename}')">
-                        Download
+                        Download JSON
                     </button>
                 `;
                 container.appendChild(div);
             });
         }
 
-        // Send test reminder
-        async function sendTestReminder() {
-            const btn = document.getElementById('sendReminderBtn');
-            const status = document.getElementById('emailStatus');
-            
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-            status.innerHTML = '<div class="loading">Sending email...</div>';
-
-            try {
-                const response = await fetch('/api/advanced/send-reminder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ appointment_id: 1 })
-                });
-
-                if (response.ok) {
-                    status.innerHTML = '<div style="color: green;">✅ Test reminder sent successfully!</div>';
-                    showToast('Test reminder sent', 'success');
-                } else {
-                    status.innerHTML = '<div style="color: red;">❌ Failed to send reminder</div>';
-                    showToast('Failed to send reminder', 'error');
-                }
-            } catch (error) {
-                status.innerHTML = '<div style="color: red;">❌ Network error</div>';
-                showToast('Network error', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Send Test Reminder';
-            }
+        // Download backup function
+        function downloadBackup(filename) {
+            showToast(`Downloading backup file...`, 'info');
+            window.location.href = '/api/advanced/backup/download';
         }
 
         // Load audit trail
@@ -828,26 +707,21 @@
                 const div = document.createElement('div');
                 div.className = 'audit-log';
                 div.innerHTML = `
-                    <div><strong>${log.action}</strong> on ${log.table_name} ${log.record_id ? `(ID: ${log.record_id})` : ''}</div>
+                    <div><strong>${log.action}</strong> on <code>${log.table_name}</code> ${log.record_id ? `(ID: ${log.record_id})` : ''}</div>
                     <div class="audit-details">
                         User: ${log.user_name || 'System'} (${log.user_email || 'N/A'})<br>
-                        IP: ${log.ip_address || 'Unknown'}
+                        IP: ${log.ip_address || '127.0.0.1'}
                     </div>
                     ${log.old_values || log.new_values ? `
                         <div class="audit-changes">
-                            ${log.old_values ? `<div><strong>Old:</strong> ${JSON.stringify(log.old_values)}</div>` : ''}
-                            ${log.new_values ? `<div><strong>New:</strong> ${JSON.stringify(log.new_values)}</div>` : ''}
+                            ${log.old_values ? `<div><strong>Old:</strong> <code>${JSON.stringify(log.old_values)}</code></div>` : ''}
+                            ${log.new_values ? `<div><strong>New:</strong> <code>${JSON.stringify(log.new_values)}</code></div>` : ''}
                         </div>
                     ` : ''}
                     <div class="timestamp">${formatDate(log.created_at)}</div>
                 `;
                 container.appendChild(div);
             });
-        }
-
-        // Download backup function
-        function downloadBackup(filename) {
-            showToast(`Downloading ${filename}...`, 'info');
         }
 
         // Initialize page
@@ -858,3 +732,4 @@
     </script>
 </body>
 </html>
+

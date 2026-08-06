@@ -6,6 +6,7 @@ const {
   getAuditTrail,
   getSystemStats,
   createSystemBackup,
+  downloadBackupFile,
   getBackups,
   exportData,
   sendAppointmentReminder,
@@ -17,9 +18,11 @@ router.put("/notifications/:id/read", markNotificationRead)
 router.get("/audit", getAuditTrail)
 router.get("/stats", getSystemStats)
 router.post("/backup", createSystemBackup)
+router.get("/backup/download", downloadBackupFile)
 router.get("/backups", getBackups)
 router.post("/export", exportData)
 router.post("/send-reminder", sendAppointmentReminder)
 router.post("/search", advancedSearch)
 
 module.exports = router
+
