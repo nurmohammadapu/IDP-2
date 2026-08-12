@@ -10,6 +10,23 @@ const {
 const crypto = require("crypto")
 const { getDB } = require("../db") 
 
+function formatDBError(err) {
+  const msg = err && err.message ? err.message : String(err)
+  if (msg.includes("UNIQUE constraint failed: patients.contact") || msg.includes("patients.contact") || msg.includes("users.phone")) {
+    return "This phone number is already registered with another account."
+  }
+  if (msg.includes("UNIQUE constraint failed: users.email") || msg.includes("users.email")) {
+    return "This email address is already registered with another account."
+  }
+  if (msg.includes("UNIQUE constraint failed: doctors.contact")) {
+    return "This contact number is already registered for another doctor."
+  }
+  if (msg.includes("UNIQUE constraint failed")) {
+    return "An account with this information already exists."
+  }
+  return msg
+}
+
 async function register(req, res) {
   try {
     const { name, email, password, role } = req.body
@@ -24,14 +41,24 @@ async function register(req, res) {
 
     const existingUser = await findUserByEmail(email)
     if (existingUser) {
-      return res.status(400).json({ error: "User with this email already exists" })
+      return res.status(400).json({ error: "This email address is already registered" })
+    }
+
+    const db = getDB()
+    const patientPhone = req.body.phone || req.body.contact || ""
+    if (patientPhone) {
+      const existingPhone = await new Promise((resolve) => {
+        db.get("SELECT id FROM patients WHERE contact = ?", [patientPhone], (err, row) => resolve(row))
+      })
+      if (existingPhone) {
+        return res.status(400).json({ error: "This phone number is already registered with another account" })
+      }
     }
 
     // Default status: pending for doctor/receptionist, active for admin/patient
     const status = (role === "doctor" || role === "receptionist") ? "pending" : "active";
 
     const userId = await createUser({ name, email, password, role, status })
-    const db = getDB()
 
     try {
       if (role === "doctor") {
@@ -53,15 +80,20 @@ async function register(req, res) {
         })
       } else if (role === "patient") {
         const { age, gender, phone, address } = req.body
-        if (!age || !gender || !phone || !address) {
+        const phoneNum = phone || req.body.contact || ""
+        if (!phoneNum) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          return res.status(400).json({ error: "Age, gender, contact phone, and address are required for patients" })
+          return res.status(400).json({ error: "Contact phone number is required for patients" })
         }
+        const patientAge = age ? parseInt(age, 10) : 0
+        const patientGender = gender || "Not Specified"
+        const patientAddress = address || "N/A"
+
         await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [userId, name, age, gender, phone, address, "None"],
+            [userId, name, patientAge, patientGender, phoneNum, patientAddress, "None"],
             function (err) {
               if (err) reject(err)
               else resolve()
@@ -81,9 +113,9 @@ async function register(req, res) {
         })
       }
     } catch (dbError) {
-      // Rollback user creation on linked table errors (e.g. unique constraint on contact number)
+      // Rollback user creation on linked table errors
       await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-      return res.status(400).json({ error: "Linked record error: " + dbError.message })
+      return res.status(400).json({ error: formatDBError(dbError) })
     }
 
     return res.status(201).json({
@@ -93,7 +125,7 @@ async function register(req, res) {
     })
   } catch (error) {
     console.error("Register error:", error)
-    return res.status(500).json({ error: "Internal server error: " + error.message })
+    return res.status(400).json({ error: formatDBError(error) })
   }
 }
 

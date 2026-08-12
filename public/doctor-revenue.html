@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Revenue - Doctor Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 HMS</h2>
+                <p class="user-role">Doctor Portal</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="doctor-dashboard.html">📊 Dashboard</a></li>
+                <li><a href="doctor-appointments.html">📅 My Appointments</a></li>
+                <li><a href="doctor-revenue.html" class="active">📈 Sales & Revenue</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userEmail">Loading...</small>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>My Sales & Revenue</h1>
+            </header>
+
+            <div class="content-section">
+                <!-- Financial Cards -->
+                <div class="financial-section">
+                    <h2>My Earnings Overview</h2>
+                    <div class="financial-grid">
+                        <div class="financial-card">
+                            <h3>Total Revenue Collected</h3>
+                            <div class="amount" id="totalRevenue">৳0.00</div>
+                        </div>
+                        
+                        <div class="financial-card">
+                            <h3>Pending Fee Payments</h3>
+                            <div class="amount pending" id="pendingPayments">৳0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Daily Revenue -->
+                <div class="revenue-section" style="margin-top: 25px;">
+                    <h2>My Recent Daily Revenue</h2>
+                    <div class="table-container">
+                        <table id="revenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Total Collected</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="2" class="loading">Loading daily revenue...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monthly Revenue -->
+                <div class="monthly-section" style="margin-top: 25px;">
+                    <h2>My Monthly Revenue</h2>
+                    <div class="table-container">
+                        <table id="monthlyRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Total Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="2" class="loading">Loading monthly data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="scripts.js"></script>
+    <script>
+        function formatTk(amount) {
+            const val = parseFloat(amount || 0);
+            return '৳' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        async function loadDoctorRevenue() {
+            try {
+                const response = await fetch('/api/reports/financial');
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('totalRevenue').textContent = formatTk(data.totalRevenue);
+                    document.getElementById('pendingPayments').textContent = formatTk(data.pendingPayments);
+
+                    // Daily revenue
+                    const revenueBody = document.querySelector('#revenueTable tbody');
+                    revenueBody.innerHTML = '';
+                    if (!data.dailyRevenue || data.dailyRevenue.length === 0) {
+                        revenueBody.innerHTML = '<tr><td colspan="2" class="no-data">No daily revenue record found</td></tr>';
+                    } else {
+                        data.dailyRevenue.forEach(item => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${formatDate(item.date)}</td>
+                                <td>${formatTk(item.revenue)}</td>
+                            `;
+                            revenueBody.appendChild(tr);
+                        });
+                    }
+
+                    // Monthly revenue
+                    const monthlyBody = document.querySelector('#monthlyRevenueTable tbody');
+                    monthlyBody.innerHTML = '';
+                    if (!data.monthlyRevenue || data.monthlyRevenue.length === 0) {
+                        monthlyBody.innerHTML = '<tr><td colspan="2" class="no-data">No monthly revenue record found</td></tr>';
+                    } else {
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        data.monthlyRevenue.forEach(item => {
+                            const monthName = monthNames[item.month - 1];
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${monthName} ${item.year}</td>
+                                <td>${formatTk(item.revenue)}</td>
+                            `;
+                            monthlyBody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    showToast('Failed to load revenue data', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error loading revenue data', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthAndLoadUser();
+            loadDoctorRevenue();
+        });
+    </script>
+</body>
+</html>

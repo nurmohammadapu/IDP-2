@@ -214,7 +214,7 @@
                 <li><a href="appointments.html">📅 Appointments</a></li>
                 <li><a href="tests.html">🧪 Tests</a></li>
                 <li><a href="billing.html" class="active">💰 Billing</a></li>
-                <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="reports.html">📈 Sales & Revenue</a></li>
                 <li><a href="settings.html">⚙️ Settings</a></li>
                 <li><a href="advanced.html" id="advancedLink" style="display: none;">⚡ Advanced</a></li>
             </ul>
@@ -600,7 +600,7 @@ document.addEventListener('click', function(e) {
                     throw new Error('Failed to load bills');
                 }
                 const data = await response.json();
-                bills = data;
+                bills = data.sort((a, b) => b.id - a.id);
                 filteredBills = [...bills]; 
                 displayBills(filteredBills);
             } catch (error) {

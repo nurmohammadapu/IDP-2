@@ -25,7 +25,7 @@ async function getAllAppointments() {
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
       JOIN doctors d ON a.doctor_id = d.id
-      ORDER BY a.appointment_date DESC, a.appointment_time DESC
+      ORDER BY a.id DESC
     `
     const rows = await all(sql, [])
     return rows

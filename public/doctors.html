@@ -20,7 +20,7 @@
                 <li><a href="doctors.html" class="active">👨‍⚕️ Doctors</a></li>
                 <li><a href="appointments.html">📅 Appointments</a></li>
                 <li><a href="billing.html">💰 Billing</a></li>
-                <li><a href="reports.html">📈 Reports</a></li>
+                <li><a href="reports.html">📈 Sales & Revenue</a></li>
                 <li><a href="settings.html">⚙️ Settings</a></li>
             </ul>
             <div class="sidebar-footer">
@@ -144,7 +144,7 @@
             const data = await response.json();
 
             if (response.ok) {
-                doctors = data;
+                doctors = data.sort((a, b) => b.id - a.id);
                 displayDoctors(doctors);
             } else {
                 showToast('Failed to load doctors', 'error');

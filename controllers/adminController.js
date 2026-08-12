@@ -63,15 +63,20 @@ async function create(req, res) {
           )
         })
       } else if (role === "patient") {
-        if (!age || !gender || !phone || !address) {
+        const patientPhone = phone || req.body.contact || ""
+        if (!patientPhone) {
           await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-          return res.status(400).json({ error: "Age, gender, contact phone, and address are required for patients" })
+          return res.status(400).json({ error: "Contact phone number is required for patients" })
         }
+        const patientAge = age ? parseInt(age, 10) : 0
+        const patientGender = gender || "Not Specified"
+        const patientAddress = address || "N/A"
+
         await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO patients (user_id, name, age, gender, contact, address, medical_history)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [userId, name, age, gender, phone, address, "None"],
+            [userId, name, patientAge, patientGender, patientPhone, patientAddress, "None"],
             function (err) {
               if (err) reject(err)
               else resolve()
@@ -93,7 +98,16 @@ async function create(req, res) {
       }
     } catch (dbError) {
       await new Promise((resolve) => db.run("DELETE FROM users WHERE id = ?", [userId], () => resolve()))
-      return res.status(400).json({ error: "Linked table creation failed: " + dbError.message })
+      const msg = dbError && dbError.message ? dbError.message : String(dbError)
+      let cleanMsg = msg
+      if (msg.includes("patients.contact") || msg.includes("users.phone")) {
+        cleanMsg = "This phone number is already registered with another account."
+      } else if (msg.includes("users.email")) {
+        cleanMsg = "This email address is already registered with another account."
+      } else if (msg.includes("doctors.contact")) {
+        cleanMsg = "This contact number is already registered for another doctor."
+      }
+      return res.status(400).json({ error: cleanMsg })
     }
 
     return res.status(201).json({ message: "User created successfully", userId })

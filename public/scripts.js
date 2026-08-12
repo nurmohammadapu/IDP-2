@@ -48,7 +48,7 @@ async function checkAuthAndLoadUser() {
         admin: ['dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 'reports.html', 'settings.html', 'advanced.html', 'tests.html'],
         receptionist: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'tests.html', 'settings.html'],
         doctor_assistant: ['dashboard.html', 'patients.html', 'doctors.html', 'appointments.html', 'reports.html', 'settings.html'],
-        doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'settings.html'],
+        doctor: ['doctor-dashboard.html', 'doctor-appointments.html', 'doctor-revenue.html', 'settings.html'],
         patient: ['patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'settings.html'],
         accountant: ['dashboard.html', 'billing.html', 'reports.html', 'settings.html']
       }
@@ -59,7 +59,7 @@ async function checkAuthAndLoadUser() {
       
       const mainPortalPages = [
         'dashboard.html', 'users.html', 'patients.html', 'doctors.html', 'appointments.html', 'billing.html', 
-        'reports.html', 'settings.html', 'advanced.html', 'tests.html', 'doctor-dashboard.html', 'doctor-appointments.html',
+        'reports.html', 'settings.html', 'advanced.html', 'tests.html', 'doctor-dashboard.html', 'doctor-appointments.html', 'doctor-revenue.html',
         'patient-dashboard.html', 'patient-appointments.html', 'patient-bills.html', 'receptionist-dashboard.html'
       ]
 
@@ -145,7 +145,7 @@ function renderDynamicSidebar(role) {
       { href: 'appointments.html', text: '📅 Appointments' },
       { href: 'tests.html', text: '🧪 Tests' },
       { href: 'billing.html', text: '💰 Billing' },
-      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'reports.html', text: '📈 Sales & Revenue' },
       { href: 'settings.html', text: '⚙️ Settings' },
       { href: 'advanced.html', text: '📝 Activity Log', id: 'advancedLink' }
     ]
@@ -164,13 +164,14 @@ function renderDynamicSidebar(role) {
       { href: 'patients.html', text: '👥 Patients' },
       { href: 'doctors.html', text: '👨‍⚕️ Doctors' },
       { href: 'appointments.html', text: '📅 Appointments' },
-      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'reports.html', text: '📈 Sales & Revenue' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
   } else if (role === 'doctor') {
     menuItems = [
       { href: 'doctor-dashboard.html', text: '📊 Dashboard' },
       { href: 'doctor-appointments.html', text: '📅 My Appointments' },
+      { href: 'doctor-revenue.html', text: '📈 Sales & Revenue' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
   } else if (role === 'patient') {
@@ -184,7 +185,7 @@ function renderDynamicSidebar(role) {
     menuItems = [
       { href: 'dashboard.html', text: '📊 Dashboard' },
       { href: 'billing.html', text: '💰 Billing' },
-      { href: 'reports.html', text: '📈 Reports' },
+      { href: 'reports.html', text: '📈 Sales & Revenue' },
       { href: 'settings.html', text: '⚙️ Settings' }
     ]
   }

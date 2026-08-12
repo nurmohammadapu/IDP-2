@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - Hospital Management System</title>
+    <title>Sales & Revenue - Hospital Management System</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -20,7 +20,8 @@
                 <li><a href="doctors.html">👨‍⚕️ Doctors</a></li>
                 <li><a href="appointments.html">📅 Appointments</a></li>
                 <li><a href="billing.html">💰 Billing</a></li>
-                <li><a href="reports.html" class="active">📈 Reports</a></li>
+                <li><a href="reports.html" class="active">📈 Sales & Revenue</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
@@ -29,41 +30,41 @@
 
         <main class="main-content">
             <header class="main-header">
-                <h1>Reports & Analytics</h1>
+                <h1>Sales & Revenue</h1>
             </header>
 
-            <div class="reports-content">
-                <!-- Overview Stats -->
-                <div class="stats-section">
+            <div class="content-section">
+                <!-- Overview Statistics -->
+                <div class="overview-section">
                     <h2>Overview Statistics</h2>
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon">👥</div>
-                            <div class="stat-info">
+                            <div class="stat-icon icon-patients">👥</div>
+                            <div class="stat-details">
                                 <h3 id="totalPatients">0</h3>
                                 <p>Total Patients</p>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon">👨‍⚕️</div>
-                            <div class="stat-info">
+                            <div class="stat-icon icon-doctors">👨‍⚕️</div>
+                            <div class="stat-details">
                                 <h3 id="totalDoctors">0</h3>
                                 <p>Total Doctors</p>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon">📅</div>
-                            <div class="stat-info">
+                            <div class="stat-icon icon-appointments">📅</div>
+                            <div class="stat-details">
                                 <h3 id="totalAppointments">0</h3>
                                 <p>Total Appointments</p>
                             </div>
                         </div>
                         
                         <div class="stat-card">
-                            <div class="stat-icon">🕐</div>
-                            <div class="stat-info">
+                            <div class="stat-icon icon-today">🕒</div>
+                            <div class="stat-details">
                                 <h3 id="todayAppointments">0</h3>
                                 <p>Today's Appointments</p>
                             </div>
@@ -73,16 +74,16 @@
 
                 <!-- Financial Reports -->
                 <div class="financial-section">
-                    <h2>Financial Reports</h2>
+                    <h2>Financial Summary</h2>
                     <div class="financial-grid">
                         <div class="financial-card">
                             <h3 id="revenueCardTitle">Total Revenue</h3>
-                            <div class="amount" id="totalRevenue">Tk-0.00</div>
+                            <div class="amount" id="totalRevenue">৳0.00</div>
                         </div>
                         
                         <div class="financial-card" id="pendingCard">
                             <h3 id="pendingCardTitle">Pending Payments</h3>
-                            <div class="amount pending" id="pendingPayments">Tk-0.00</div>
+                            <div class="amount pending" id="pendingPayments">৳0.00</div>
                         </div>
                     </div>
                 </div>
@@ -156,6 +157,11 @@
 
     <script src="scripts.js"></script>
     <script>
+        function formatTk(amount) {
+            const val = parseFloat(amount || 0);
+            return '৳' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
         // Load overview data
         async function loadOverviewData() {
             try {
@@ -191,8 +197,8 @@
                         document.getElementById('pendingCardTitle').textContent = "Today's Collection (To Deposit)";
                         document.getElementById('pendingPayments').className = "amount";
                     }
-                    document.getElementById('totalRevenue').textContent = `Tk-${parseFloat(data.totalRevenue || 0).toFixed(2)}`;
-                    document.getElementById('pendingPayments').textContent = `Tk-${parseFloat(data.pendingPayments || 0).toFixed(2)}`;
+                    document.getElementById('totalRevenue').textContent = formatTk(data.totalRevenue);
+                    document.getElementById('pendingPayments').textContent = formatTk(data.pendingPayments);
                     
                     // Load daily revenue table
                     const revenueTableBody = document.querySelector('#revenueTable tbody');
@@ -205,7 +211,7 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${formatDate(item.date)}</td>
-                                <td>Tk-${parseFloat(item.revenue).toFixed(2)}</td>
+                                <td>${formatTk(item.revenue)}</td>
                             `;
                             revenueTableBody.appendChild(row);
                         });
@@ -226,7 +232,7 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${monthName} ${item.year}</td>
-                                <td>Tk-${parseFloat(item.revenue).toFixed(2)}</td>
+                                <td>${formatTk(item.revenue)}</td>
                             `;
                             monthlyTableBody.appendChild(row);
                         });
@@ -245,7 +251,7 @@
                                 <td>${item.doctor_name}</td>
                                 <td>${item.staff_name}</td>
                                 <td>${item.visit_count}</td>
-                                <td>Tk-${parseFloat(item.total_collected).toFixed(2)}</td>
+                                <td>${formatTk(item.total_collected)}</td>
                             `;
                             breakdownTableBody.appendChild(row);
                         });

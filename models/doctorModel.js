@@ -22,7 +22,7 @@ async function getAllDoctors() {
   try {
     const db = getDB()
     const all = promisify(db.all).bind(db)
-    const rows = await all("SELECT * FROM doctors ORDER BY created_at DESC", [])
+    const rows = await all("SELECT * FROM doctors ORDER BY id DESC", [])
     return rows
   } catch (err) {
     console.error("getAllDoctors database error:", err)
